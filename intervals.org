@@ -1,0 +1,71 @@
+* All intervals
+
+| P1 | A1 | d2 | m2 | M2 | A2 | d3 | m3 | M3 | A3 | d4 | P4 | A4 | d5 | P5 | A5 | d6 | m6 | M6 | A6 | d7 | m7 | M7 | A7 | d8 | P8   | (TT) |
+
+* Natural intervals
+
+| P1 | m2 | M2 | m3 | M3 | P4 | P5 | m6 | M6 | m7 | M7 | P8 | (TT) |
+
+* Modified intervals
+
+| A1 | d2 | A2 | d3 | A3 | d4 | A4 | d5 | A5 | d6 | A6 | d7 | A7 | d8 |
+
+* Doubly-modified intervals
+
+* Triply-modified intervals
+| ddd5 |
+
+* Table (down then across, all intervals *upwards*)
+
+| +  | Af  | An | As  | Bf  | Bn  | Bs   | Cf  | Cn | Cs  | Df  | Dn | Ds  | Ef  | En | Es  | Ff   | Fn  | Fs  | Gf  | Gn | Gs  |
+| Af | P1  | A1 | AA1 | M2  | A2  | AA2  | m3  | M3 | A3  | P4  | A4 | AA4 | P5  | A5 | AA5 | m6   | M6  | A6  | m7  | M7 | A7  |
+| An | d8  | P1 | A1  | m2  | M2  | A2   | d3  | m3 | M3  | d4  | P4 | A4  | d5  | P5 | A5  | d6   | m6  | M6  | d7  | m7 | M7  |
+| As | dd8 | d8 | P1  | d2  | m2  | M2   | dd3 | d3 | m3  | dd4 | d4 | P4  | dd5 | d5 | P5  | dd6  | d6  | m6  | dd7 | d7 | m7  |
+| Bf | m7  | M7 | A7  | P1  | A1  | AA1  | m2  | M2 | A2  | m3  | M3 | A3  | P4  | A4 | AA4 | d5   | P5  | A5  | m6  | M6 | A6  |
+| Bn | d7  | m7 | M7  | d8  | P1  | A1   | d2  | m2 | M2  | d3  | m3 | M3  | d4  | P4 | A4  | dd5  | d5  | P5  | d6  | m6 | M6  |
+| Bs | dd7 | d7 | m7  | dd8 | d8  | P1   | dd2 | d2 | m2  | dd3 | d3 | m3  | dd4 | d4 | P4  | ddd5 | dd5 | d5  | dd6 | d6 | m6  |
+| Cf | M6  | A6 | AA6 | M7  | A7  | AA7  | P1  | A1 | AA1 | M2  | A2 | AA2 | M3  | A3 | AA3 | P4   | A4  | AA4 | P5  | A5 | AA5 |
+| Cn | m6  | M6 | A6  | m7  | M7  | A7   | d8  | P1 | A1  | m2  | M2 | A2  | m3  | M3 | A3  | d4   | P4  | A4  | d5  | P5 | A5  |
+| Cs | d6  | m6 | M6  | d7  | m7  | M7   | dd8 | d8 | P1  | d2  | m2 | M2  | d3  | m3 | M3  | dd4  | d4  | P4  | dd5 | d5 | P5  |
+| Df | P5  | A5 | AA5 | M6  | A6  | AA6  | m7  | M7 | A7  | P1  | A1 | AA1 | M2  | A2 | AA2 | m3   | M3  | A3  | P4  | A4 | AA4 |
+| Dn | d5  | P5 | A5  | m6  | M6  | A6   | d7  | m7 | M7  | d8  | P1 | A1  | m2  | M2 | A2  | d3   | m3  | M3  | d4  | P4 | A4  |
+| Ds | dd5 | d5 | P5  | d6  | m6  | M6   | dd7 | d7 | m7  | dd8 | d8 | P1  | d2  | m2 | M2  | dd3  | d3  | m3  | dd4 | d4 | P4  |
+| Ef | P4  | A4 | AA4 | P5  | A5  | AA5  | m6  | M6 | A6  | m7  | M7 | A7  | P1  | A1 | AA1 | m2   | M2  | A2  | m3  | M3 | A3  |
+| En | d4  | P4 | A4  | d5  | P5  | A5   | d6  | m6 | M6  | d7  | m7 | M7  | d8  | P1 | A1  | d2   | m2  | M2  | d3  | m3 | M3  |
+| Es | dd4 | d4 | P4  | dd5 | d5  | P5   | dd6 | d6 | m6  | dd7 | d7 | m7  | dd8 | d8 | P1  | dd2  | d2  | m2  | dd3 | d3 | m3  |
+| Ff | M3  | A3 | AA3 | A4  | AA4 | AAA4 | P5  | A5 | AA5 | M6  | A6 | AA6 | M7  | A7 | AA7 | P1   | A1  | AA1 | M2  | A2 | AA2 |
+| Fn | m3  | M3 | A3  | P4  | A4  | AA4  | d5  | P5 | A5  | m6  | M6 | A6  | m7  | M7 | A7  | d8   | P1  | A1  | m2  | M2 | A2  |
+| Fs | d3  | m3 | M3  | d4  | P4  | A4   | dd5 | d5 | P5  | d6  | m6 | M6  | d7  | m7 | M7  | dd8  | d8  | P1  | d2  | m2 | M2  |
+| Gf | M2  | A2 | AA2 | M3  | A3  | AA3  | P4  | A4 | AA4 | P5  | A5 | AA5 | M6  | A6 | AA6 | m7   | M7  | A7  | P1  | A1 | AA1 |
+| Gn | m2  | M2 | A2  | m3  | M3  | A3   | d4  | P4 | A4  | d5  | P5 | A5  | m6  | M6 | A6  | d7   | m7  | M7  | d8  | P1 | A1  |
+| Gs | d2  | m2 | M2  | d3  | m3  | M3   | dd4 | d4 | P4  | dd5 | d5 | P5  | d6  | m6 | M6  | dd7  | d7  | m7  | dd8 | d8 | P1  |
+
+* Table of interval adding (ignoring DDim/DAug for now)
+
+| +  | P1 | A1  | d2   | m2  | M2  | A2   | d3   | m3  | M3  | A3   | d4  | P4 | A4 | d5 | P5 | A5  | d6 | m6 | M6 | A6 | d7 | m7 | M7 | A7 | d8 |
+| P1 | P1 | A1  |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| A1 | A1 | AA1 |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| d2 | d2 | m2  | ddd3 | dd3 | d3  | m3   |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| m2 | m2 | M2  | dd3  | d3  | m3  | M3   |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| M2 | M2 | A2  | d3   | m3  | M3  | A3   |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| A2 | A2 | AA2 | m3   | M3  | A3  | AA3  |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| d3 | d3 | m3  | ddd4 | dd4 | d4  | P4   | ddd5 | dd5 | d5  | P5   |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| m3 | m3 | M3  | dd4  | d4  | P4  | A4   | dd5  | d5  | P5  | A5   |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| M3 | M3 | A3  | d4   | P4  | A4  | AA4  | d5   | P5  | A5  | AA5  |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| A3 | A3 | AA4 | P4   | A4  | AA4 | AAA4 | P5   | A5  | AA5 | AAA5 |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| d4 | d4 | P4  | ddd5 | dd5 | d5  | P5   |      |     |     |      | dd7 | d7 | m7 |    |    |     |    |    |    |    |    |    |    |    |    |
+| P4 | P4 | A4  | dd5  | d5  | P5  | A5   |      |     |     |      | d7  | m7 | M7 |    |    |     |    |    |    |    |    |    |    |    |    |
+| A4 | A4 | AA5 | d5   | P5  | A5  | AA5  |      |     |     |      | m7  | M7 | A7 |    |    |     |    |    |    |    |    |    |    |    |    |
+| d5 | d5 | P5  | P5   | A5  | AA5 | AAA5 |      |     |     |      |     |    |    | d9 | m9 | M9  |    |    |    |    |    |    |    |    |    |
+| P5 | P5 | A5  |      |     |     |      |      |     |     |      |     |    |    | m9 | M9 | A9  |    |    |    |    |    |    |    |    |    |
+| A5 | A5 | AA6 |      |     |     |      |      |     |     |      |     |    |    | M9 | A9 | AA9 |    |    |    |    |    |    |    |    |    |
+| d6 | d6 | m6  |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| m6 | m6 | M6  |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| M6 | M6 | A6  |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| A6 | A6 | AA6 |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| d7 | d7 | m7  |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| m7 | m7 | M7  |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| M7 | M7 | A7  |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| A7 | A7 | AA7 |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+| d8 | d8 | ?   |      |     |     |      |      |     |     |      |     |    |    |    |    |     |    |    |    |    |    |    |    |    |    |
+

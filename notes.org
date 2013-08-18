@@ -1,0 +1,10 @@
+* Pieces to try in just temperament/other tuning systems
+Lassus - Prophetiae Sibyllarum
+- some Zarlino
+* Searching for solutions (counterpoint etc.)
+** [[docview:~/Documents/computers/jfp01.ps::1][Modular Lazy Search for Constraint Satisfaction Problems]]
+* Overview of tuning systems
+http://archive.cs.uu.nl/pub/MIDI/DOC/Tunings
+
+* Geometry
+http://ticsp.cs.tut.fi/index.php/The_Structure_of_Rational_Scales_and_Intervals_in_Music_-_A_geometrical_view
