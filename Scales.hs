@@ -9,15 +9,16 @@ import Music (Scale(..),
               AbstractPitch1(..), AbstractInt1(..),
               AbstractPitch2(..), AbstractInt2(..),
               Interval(..), Pitch(..), Transpose(..),
-              flat, sharp, octave,
               faInt, faPitch,
               Name(..), Number(..), Quality(..), Accidental(..), Ficta(..))
+import Shortcuts
 
 import Util (rotate, rotateN)
 
 data GenericScale where
   GenericScale :: Scale s p i => s -> GenericScale
 
+-- todo: represent/enforce scale length(s) with type-level Nats.
 
 ficToAcc Raise = sharpen
 ficToAcc Neutral = id

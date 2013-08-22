@@ -18,9 +18,12 @@
              GeneralizedNewtypeDeriving,
              StandaloneDeriving,
              ViewPatterns,
+             ExplicitForAll,
              FlexibleInstances #-}
 
 module Music where
+-- Todo: make this file literate Haskell (.lhs), due to the large
+-- number of long comments.
 
 import Prelude hiding (negate)
 import qualified Data.Map as Map
@@ -31,10 +34,11 @@ import Control.Monad
 import Data.AdditiveGroup
 import Data.AffineSpace
 import Data.VectorSpace
+import Data.Semigroup hiding (Min)
 
 import Util (interleave, iterateM,
              compose, member, intersection,
-             remove, nd)
+             remove, nd, foldSG)
 
 data AbstractPitch1 = AbstractPitch1 Degree Ficta deriving Eq
 
@@ -57,22 +61,26 @@ makeFreqList t = iterateM k g
 
 data AbstractPitch3 = AbstractPitch3 Freq deriving Eq -- apply tuning system
 
+-- type Figuring = AbstractInt1 -- speculative ... for figured bass
+
 data Silence = Silence -- as a "pitch"
 
-data AbstractInt1 = AbstractInt1 Skip deriving Eq
+data AbstractInt1 = AbstractInt1 Skip Ficta deriving (Eq, Show)
 data AbstractInt2 = AbstractInt2 Quality Number deriving Eq
 data AbstractInt3 = AbstractInt3 Freq deriving Eq
 
-data AbstractDur1 = AbstractDur1 Pattern
-data AbstractDur2 = AbstractDur2 (Ratio Integer)
-data AbstractDur3 = AbstractDur3 Length
+data AbstractDur1 = AbstractDur1 MDur deriving (Eq, Show)
+-- data AbstractDur1 = AbstractDur1 Pattern
+-- AbstractDur1 is for prolations; maybe another type is needed for
+-- e.g.  Schenkerian/more abstract rhythms.
+
+
+-- todo: use newtype Ratio for AbstractDur2? To aid in Show instances etc.
+data AbstractDur2 = AbstractDur2 (Ratio Integer) deriving Eq
+data AbstractDur3 = AbstractDur3 Length deriving Eq
 
 data Name = A | B | C | D | E | F | G | Up Name | Down Name deriving (Eq)
 data Accidental = Na | Fl Accidental | Sh Accidental deriving Eq
-
-sharp = Sh Na
-flat = Fl Na
-natural = Na
 
 data Degree = TO | ST | ME | SD | DO | SM | LN | DUp Degree | DDown Degree deriving (Eq, Show)
 data Ficta = Raise | Neutral | Lower deriving Eq
@@ -121,7 +129,10 @@ instance Show Silence where
 instance Show AbstractPitch2 where
   show (AbstractPitch2 n a) = (show n) ++ (show a)
 
-data Pattern = Single | Double Integer | Triple Integer
+-- data Pattern = Single | Double Integer | Triple Integer | Pattern :+: Pattern
+
+data MDur = Mx | Lo | Br | Sb | Mi | Sm | Ff | Sf | Tie MDur MDur | Punctus MDur
+          deriving (Eq, Show)
 
 type Freq = Double
 
@@ -153,7 +164,7 @@ instance Show AbstractDur3 where
 data Skip = Fir | Sec | Thi | Fou | Fif | Six | Sev
           | Com Skip
           | Neg Skip
-          deriving Eq
+          deriving (Eq, Show)
 
 data Number = Unison | Second | Third | Fourth | Fifth | Sixth | Seventh
             | Compound Number
@@ -196,18 +207,19 @@ instance Show AbstractInt2 where
 class (Transpose p i, Duration d) => Note p i d where
 
 
-class (Pitch p, Interval i) => Transpose p i | p -> i where
+class (Pitch p, Interval i, AffineSpace p, VectorSpace i) => Transpose p i | p -> i, i -> p where
   transpose :: i -> p -> p
   interval :: p -> p -> i
   normalise :: p -> i -> p -> p
+  normalise _ _ _ = undefined
 
-class Eq p => Pitch p where
+class (Show p, Eq p, AffineSpace p) => Pitch p where
   incr :: p -> p
   decr :: p -> p
   sharpen :: p -> p
   flatten :: p -> p
 
-class Eq i => Interval i where
+class (Show i, Eq i, AdditiveGroup i) => Interval i where
   unison :: i
   octave :: i
   invert :: i -> i
@@ -224,8 +236,11 @@ class (Transpose p i) => Scale s p i | s -> p i where
   scale :: s -> [AbstractPitch2]
   applyScale :: s -> p -> AbstractPitch2
 
-class Duration d where
---  stretch :: d -> d -> d
+class (Semigroup d, Show d, Eq d) => Duration d where
+  combine :: d -> d -> d
+
+class Mensuration m where
+  mensurate :: m -> AbstractDur1 -> AbstractDur2
 
 -- This method of specifying tuning systems will *not* allow different
 -- tuning systems (instances of Tuning) to coexist in the same piece
@@ -275,6 +290,11 @@ class (Transpose p i) => Tuning t p i | t -> p i where
 
 class (Duration d) => Timing t d | t -> d where
   time :: t -> d -> AbstractDur3
+
+
+noteToSound :: (Tuning t AbstractPitch2 AbstractInt2, Timing i AbstractDur2) => t -> i -> Note2 -> Note3
+noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
+noteToSound _ timing (Rest d) = Rest (time timing d)
 
 --------------
 
@@ -386,23 +406,32 @@ instance Enum Number where
 ----------------------------------------------------
 ---- Data structures to store whole sequences of notes.
 
-data Connector where
+-- data Connector where
 --  Connector :: VoiceName -> Phrase -> (AbstractNote p i d) -> Connector
-  Connector :: VoiceName -> Phrase -> Connector
-  Null :: Connector
+--  Connector :: Phrase -> Connector
+--   Connector :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> Connector
+--  ConnectToVoice :: VoiceName -> Connector
+--  Null :: Connector
 
-instance Show Connector where
-  show (Connector v p) = "(" ++ (show v) ++ ":" ++ (show p) ++ ")"
-  show Null = "∎"
--- maybe different kind of connector for within-voice connections?
+-- instance Show Connector where
+--   show (Connector p) = "->" ++ (show p)
+--  show (ConnectToVoice v) = "->(:" ++ (show v) ++ ":)" -- unnecessary
+--  show Null = "->∎" -- unnecessary
+
+---- Ultimately, we want special behaviour (w.r.t Show-ing &
+---- otherwise) when a connector comes *last* in a phrase.
 
 data AbstractNote p i d where
-  AbstractPitch :: (Note p i d, Show p, Show d) =>
-                  p -> d -> (AbstractNote p i d)
-  AbstractInt :: (Note p i d, Show i, Show d) =>
-                  i -> d -> (AbstractNote p i d)
+  AbstractPitch :: (Note p i d, Show p, Show d) => p -> d -> (AbstractNote p i d)
+  AbstractInt :: (Note p i d, Show i, Show d) => i -> d -> (AbstractNote p i d)
   Rest :: (Duration d, Show d) => d -> (AbstractNote p i d)
-  Conn :: Connector -> (AbstractNote p i d)
+  Conn :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
+--  Conn :: (Note p i d, Note p' i' d') => AbstractPhrase
+--  (AbstractNote p' i' d') -> (AbstractNote p i d) -- ideally we want
+--  Conn to be able to contain an AbstractPhrase of an arbitrary type,
+--  but this breaks mapPhrase (and everything else)
+
+conn c = AbstractPhrase [Conn c]
 
 -- todo: fix to use proper ratio
 showNote (AbstractDur2 (nd -> (2, 1))) = "𝅜"
@@ -410,6 +439,11 @@ showNote (AbstractDur2 (nd -> (1, 1))) = "𝅝"
 showNote (AbstractDur2 (nd -> (1, 2))) = "𝅗𝅥"
 showNote (AbstractDur2 (nd -> (1, 4))) = "𝅘𝅥"
 showNote (AbstractDur2 (nd -> (1, 8))) = "𝅘𝅥𝅮"
+showNote (AbstractDur2 (nd -> (1, 16))) = "𝅘𝅥𝅯"
+showNote (AbstractDur2 (nd -> (1, 32))) = "𝅘𝅥𝅰"
+showNote (AbstractDur2 (nd -> (1, 64))) = "𝅘𝅥𝅱"
+showNote (AbstractDur2 (nd -> (1, 128))) = "𝅘𝅥𝅲"
+
 showNote (AbstractDur2 r) = show r
 
 showRest (AbstractDur2 (nd -> (2, 1))) = "𝄺"
@@ -417,6 +451,11 @@ showRest (AbstractDur2 (nd -> (1, 1))) = "𝄻"
 showRest (AbstractDur2 (nd -> (1, 2))) = "𝄼"
 showRest (AbstractDur2 (nd -> (1, 4))) = "𝄽"
 showRest (AbstractDur2 (nd -> (1, 8))) = "𝄾"
+showRest (AbstractDur2 (nd -> (1, 16))) = "𝄿"
+showRest (AbstractDur2 (nd -> (1, 32))) = "𝅀"
+showRest (AbstractDur2 (nd -> (1, 64))) = "𝅁"
+showRest (AbstractDur2 (nd -> (1, 128))) = "𝅂"
+
 showRest (AbstractDur2 r) = show r
 
 type Note1 = AbstractNote AbstractPitch1 AbstractInt1 AbstractDur1
@@ -427,11 +466,13 @@ instance Show Note2 where
   show (AbstractPitch p d) = "{" ++ (show p) ++ " " ++ (showNote d) ++ "}"
   show (AbstractInt i d) = "{" ++ (show i) ++ " " ++ (showNote d) ++ "}"
   show (Rest d) = "{" ++ (showRest d) ++ "}"
+  show (Conn c) = "{" ++ (show c) ++ "}"
 
 instance Show (AbstractNote p i d) where
   show (AbstractPitch p d) = "Note{" ++ (show p) ++ " " ++ (show d) ++ "}"
   show (AbstractInt i d) = "Interval{" ++ (show i) ++ " " ++ (show d) ++ "}"
   show (Rest d) = "Rest{" ++ (show d) ++ "}"
+  show (Conn c) = "{" ++ (show c) ++ "}"
 
 -- deriving instance Show AbstractNote -- or this!
 
@@ -441,9 +482,13 @@ instance Show (AbstractNote p i d) where
 
 instance Note AbstractPitch1 AbstractInt1 AbstractDur1 where
 
+instance Note AbstractPitch1 AbstractInt1 AbstractDur2 where
+
 instance Note AbstractPitch2 AbstractInt2 AbstractDur2 where
 
 instance Note AbstractPitch3 AbstractInt3 AbstractDur3 where
+
+-- instance Note Figuring AbstractInt1 AbstractDur2 where
 
 instance Pitch AbstractPitch1 where
   sharpen (AbstractPitch1 d f) = AbstractPitch1 d (applyFicta Raise f)
@@ -463,21 +508,27 @@ instance Pitch AbstractPitch3 where
   incr (AbstractPitch3 f) = AbstractPitch3 (f * (1 + 100*cent))
   decr (AbstractPitch3 f) = AbstractPitch3 (f * (1 - 100*cent))
 
+-- instance Pitch Figuring where
+--  sharpen = augment
+--  flatten = diminish
+--  incr = grow
+--  decr = shrink
+
 
 instance Interval AbstractInt1 where
-  add (AbstractInt1 s) (AbstractInt1 t) = AbstractInt1 $ toEnum $ (fromEnum s) + (fromEnum t)
-  sub (AbstractInt1 s) (AbstractInt1 t) = AbstractInt1 $ toEnum $ (fromEnum s) - (fromEnum t)
-  invert (AbstractInt1 s) = AbstractInt1 $ toEnum $ 7 - (fromEnum s)
-  negate (AbstractInt1 s) = AbstractInt1 (propagateNegative s)
+  add (AbstractInt1 s f) (AbstractInt1 t g) = AbstractInt1 (toEnum $ (fromEnum s) + (fromEnum t)) Neutral
+  sub (AbstractInt1 s f) (AbstractInt1 t g) = AbstractInt1 (toEnum $ (fromEnum s) - (fromEnum t)) Neutral
+  invert (AbstractInt1 s _) = AbstractInt1 (toEnum $ 7 - (fromEnum s)) Neutral
+  negate (AbstractInt1 s _) = AbstractInt1 (propagateNegative s) Neutral
     where propagateNegative (Neg n) = n
           propagateNegative (Com n) = Com (Neg n)
           propagateNegative n = Neg n
-  grow (AbstractInt1 s) = AbstractInt1 $ (toEnum . (+ 1) . fromEnum) s
-  shrink (AbstractInt1 s) = AbstractInt1 $ (toEnum . (+(-1)) . fromEnum) s
-  augment = id
-  diminish = id
-  unison = AbstractInt1 Fir
-  octave = AbstractInt1 (Com Fir)
+  grow (AbstractInt1 s _) = AbstractInt1 ((toEnum . (+ 1) . fromEnum) s) Neutral
+  shrink (AbstractInt1 s _) = AbstractInt1 ((toEnum . (+(-1)) . fromEnum) s) Neutral
+  augment (AbstractInt1 s f) = AbstractInt1 s (applyFicta Raise f)
+  diminish (AbstractInt1 s f) = AbstractInt1 s (applyFicta Lower f)
+  unison = AbstractInt1 Fir Neutral
+  octave = AbstractInt1 (Com Fir) Neutral
 
 
 instance (Interval i) => AdditiveGroup i where
@@ -485,23 +536,33 @@ instance (Interval i) => AdditiveGroup i where
   (^+^) = add
   negateV = negate
 
-instance (Interval i) => VectorSpace i where
-  type Scalar i = Int
+-- instance Interval i => VectorSpace i where -- not possible, no
+                                           -- overlapping associated
+                                           -- types allowed in GHC yet
+                                           -- :-/
+--   type Scalar i = Int
+  -- (*^) 0 i = zeroV
+  -- (*^) s i
+    -- | (s > 0) = i ^+^ ((s - 1) *^ i)
+    -- | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
+
+instance VectorSpace AbstractInt1 where
+  type Scalar AbstractInt1 = Int
   (*^) 0 i = zeroV
   (*^) s i
     | (s > 0) = i ^+^ ((s - 1) *^ i)
     | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
 
--- instance VectorSpace AbstractInt2 where
-  -- type Scalar AbstractInt2 = Int
-  -- (*^) 0 i = zeroV
-  -- (*^) s i
-    -- | (s > 0) = i ^+^ ((s - 1) *^ i)
-    -- | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
--- 
--- instance VectorSpace AbstractInt3 where
-  -- type Scalar AbstractInt3 = Int
-  -- (*^) s (AbstractInt3 f) = AbstractInt3 $ f ** (fromIntegral s)
+instance VectorSpace AbstractInt2 where
+  type Scalar AbstractInt2 = Int
+  (*^) 0 i = zeroV
+  (*^) s i
+    | (s > 0) = i ^+^ ((s - 1) *^ i)
+    | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
+
+instance VectorSpace AbstractInt3 where
+  type Scalar AbstractInt3 = Int
+  (*^) s (AbstractInt3 f) = AbstractInt3 $ f ** (fromIntegral s)
 
 -- instance (Pitch p) => AffineSpace p where  -- not possible :-/
 --   type (Diff p) = (Transpose p i) => i
@@ -531,7 +592,7 @@ data FreeAbelian = Int ::+ Int deriving (Show, Eq)
 --
 -- Essentially, intervals form a free Abelian group G = {(n*e_1,m*e_2)
 -- | n,m in Z} where e_1 = (1,0) and e_2 = (0,1) are two possible
--- elements that can be used as a basis (generators_ for the group.
+-- elements that can be used as a basis (generators for the group.
 -- An interval ratio is then defined as (A1)^n * (d2)^m.
 --
 -- Note that, in Pythagorean tuning, d2 is comma^(-1) (in negative
@@ -557,12 +618,16 @@ instance Num FreeAbelian where
   signum (a ::+ b) = undefined
 
 faInt :: Quality -> Number -> FreeAbelian
-
 -- i.e. intervals as elements of the free Abelian group
 
 faInt Perf Unison = 0 ::+ 0
 faInt (Aug Perf) Unison = 1 ::+ 0
 faInt (Dim Min) Second = 0 ::+ 1
+
+faInt Perf (Compound Unison) = (faInt Maj Seventh) + (faInt Min Second)
+
+faInt q n@(Negative _) = faInt' q n
+faInt q n@(Compound _) = faInt' q n
 
 faInt Min Second = (faInt (Dim Min) Second) + (faInt (Aug Perf) Unison)
 faInt Maj Second = (faInt Min Second) + (faInt (Aug Perf) Unison)
@@ -574,13 +639,26 @@ faInt Min Sixth = (faInt Perf Fifth) + (faInt Min Second)
 faInt Maj Sixth = (faInt Perf Fifth) + (faInt Maj Second)
 faInt Min Seventh = (faInt Maj Sixth) + (faInt Min Second)
 faInt Maj Seventh = (faInt Maj Sixth) + (faInt Maj Second)
-faInt Perf (Compound Unison) = (faInt Maj Seventh) + (faInt Min Second)
-
-faInt q (Compound n) = (faInt Perf (Compound Unison)) + (faInt q n)
-faInt q (Negative n) = (faInt Perf Unison) - (faInt q n)
 
 faInt (Dim q) n = (faInt q n) - (faInt (Aug Perf) Unison)
 faInt (Aug q) n = (faInt q n) + (faInt (Aug Perf) Unison)
+
+faInt' q n = let comps = countComp n
+                 negs = countNeg n
+                 i = faInt q (justNum n)
+             in (i + ((comps ::+ 0) * (faInt Perf (Compound Unison)))) * (negs ::+ 0)
+
+countComp (Compound n) = (countComp n) + 1
+countComp (Negative n) = countComp n
+countComp _ = 0
+
+countNeg (Negative n) = (countNeg n) * (-1)
+countNeg (Compound n) = countNeg n
+countNeg _ = 1
+
+justNum (Negative n) = justNum n
+justNum (Compound n) = justNum n
+justNum n = n
 
 toInterval (a ::+ d) = AbstractInt2 (faIntToQual (a ::+ d)) (toEnum d)
 intToFa (AbstractInt2 q n) = faInt q n
@@ -624,10 +702,11 @@ instance Interval AbstractInt2 where
   add (AbstractInt2 q n) (AbstractInt2 p m) = toInterval $ (faInt q n) + (faInt p m)
   sub (AbstractInt2 q n) (AbstractInt2 p m) = toInterval $ (faInt q n) - (faInt p m)
   invert (AbstractInt2 q n) = toInterval $ (faInt Perf (Compound Unison)) - (faInt q n)
-  negate (AbstractInt2 q n) = AbstractInt2 q (propagateNegative n)
-    where propagateNegative (Negative n) = n
-          propagateNegative (Compound n) = Compound (Negative n)
-          propagateNegative n = Negative n
+--   negate (AbstractInt2 q n) = AbstractInt2 q (propagateNegative n)
+--     where propagateNegative (Negative n) = n
+--           propagateNegative (Compound n) = Compound (Negative n)
+--           propagateNegative n = Negative n
+  negate (AbstractInt2 q n) = sub (AbstractInt2 Perf Unison) (AbstractInt2 q n)
   augment (AbstractInt2 q n) = toInterval $ (faInt q n) + (1 ::+ 0)
   diminish (AbstractInt2 q n) = toInterval $ (faInt q n) - (1 ::+ 0)
   grow (AbstractInt2 q n) = toInterval $ (faInt q n) + (1 ::+ 1)
@@ -652,24 +731,28 @@ instance Interval AbstractInt3 where
   octave = AbstractInt3 2
 
 instance Transpose AbstractPitch1 AbstractInt1 where
-  transpose (AbstractInt1 s) (AbstractPitch1 d f) = AbstractPitch1 (toEnum $ (fromEnum s) + (fromEnum d)) Neutral
-  interval (AbstractPitch1 d f) (AbstractPitch1 d' f') = AbstractInt1 $ toEnum $ (fromEnum d') - (fromEnum d)
-  normalise (AbstractPitch1 d f) (AbstractInt1 s) (AbstractPitch1 e g)
+  transpose (AbstractInt1 s f') (AbstractPitch1 d f) = AbstractPitch1 (toEnum $ (fromEnum s) + (fromEnum d)) (applyFicta f' f)
+  interval (AbstractPitch1 d _) (AbstractPitch1 d' _) = AbstractInt1 (toEnum $ (fromEnum d') - (fromEnum d)) Neutral
+  normalise (AbstractPitch1 d f) (AbstractInt1 s _) (AbstractPitch1 e g)
     | s < (Com Fir) = undefined
     | (current >= lower) && (current < upper) = AbstractPitch1 d f
-    | current < lower = normalise (AbstractPitch1 d f) (AbstractInt1 s) (transpose (AbstractInt1 (Com Fir)) (AbstractPitch1 e g))
-    | otherwise = normalise (AbstractPitch1 d f) (AbstractInt1 s) (transpose (AbstractInt1 (Neg (Com Fir))) (AbstractPitch1 e g))
+    | current < lower = normalise (AbstractPitch1 d f) (AbstractInt1 s Neutral) (transpose (AbstractInt1 (Com Fir) Neutral) (AbstractPitch1 e g))
+    | otherwise = normalise (AbstractPitch1 d f) (AbstractInt1 s Neutral) (transpose (AbstractInt1 (Neg (Com Fir)) Neutral) (AbstractPitch1 e g))
     where lower = fromEnum d
           upper = lower + (fromEnum s)
           current = fromEnum e
 
+-- instance Transpose Figuring AbstractInt1 where
+--   transpose = (^+^)
+--   interval = (^-^)
 
 
 faPitch :: Name -> Accidental -> FreeAbelian
 
--- i.e. pitches as elements of the free Abelian group
-
--- all pitches are measured relative to middle-A-natural
+-- i.e. pitches as elements of the free Abelian group -- only really
+-- as an implementation detail: all pitches are explicitly measured as
+-- intervals relative to middle-A-natural. To the user, pitches still
+-- form an affine space.
 
 faPitch A Na = 0 ::+ 0
 faPitch B Na = (faPitch A Na) + (faInt Maj Second)
@@ -686,38 +769,43 @@ faPitch n (Fl a) = (faPitch n a) - (1 ::+ 0)
 faPitch n (Sh a) = (faPitch n a) + (1 ::+ 0)
 
 toPitch :: FreeAbelian -> AbstractPitch2
-toPitch (n ::+ m) = AbstractPitch2 (toEnum m) (faIntToAcc (n ::+ m))
+-- toPitch (n ::+ m) = AbstractPitch2 (toEnum m) (faToAcc (n ::+ m))
+toPitch (n ::+ m) = AbstractPitch2 (toEnum m) ((faToAcc . faNorm) (n ::+ m))
 
 pitchToFa (AbstractPitch2 n a) = faPitch n a
 
-faIntToAcc (n ::+ m)
-  | (n < 0) && (m == 0) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (0 ::+ 0) = Na
-  | (n > 0) && (m == 0) = Sh (faIntToAcc ((n - 1) ::+ m))
-  | (n < 2) && (m == 1) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (2 ::+ 1) = Na
-  | (n > 2) && (m == 1) = Sh (faIntToAcc ((n - 1) ::+ m))
-  | (n < 3) && (m == 2) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (3 ::+ 2) = Na
-  | (n > 3) && (m == 2) = Sh (faIntToAcc ((n - 1) ::+ m))
-  | (n < 5) && (m == 3) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (5 ::+ 3) = Na
-  | (n > 5) && (m == 3) = Sh (faIntToAcc ((n - 1) ::+ m))
-  | (n < 7) && (m == 4) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (7 ::+ 4) = Na
-  | (n > 7) && (m == 4) = Sh (faIntToAcc ((n - 1) ::+ m))
-  | (n < 8) && (m == 5) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (8 ::+ 5) = Na
-  | (n > 8) && (m == 5) = Sh (faIntToAcc ((n - 1) ::+ m))
-  | (n < 10) && (m == 6) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (10 ::+ 6) = Na
-  | (n > 10) && (m == 6) = Sh (faIntToAcc ((n - 1) ::+ m))
-  | (n < 12) && (m == 7) = Fl (faIntToAcc ((n + 1) ::+ m))
-  | (n ::+ m) == (12 ::+ 7) = Na
-  | (n > 12) && (m == 7) = Sh (faIntToAcc ((n - 1) ::+ m))
+oct m = m `div` 7
 
-  | (n < 0) || (m < 0) = faIntToAcc ((n + 12) ::+ (m + 7))
-  | (n > 12) || (m > 7) = faIntToAcc ((n - 12) ::+ (m - 7))
+faNorm (n ::+ m) = (n - (12 * (oct m))) ::+ (m `mod` 7)
+
+-- Only for pitches the lie within the span of one octave above
+-- middle-A (e.g. that have been normalised by faNorm).
+faToAcc (n ::+ m)
+  | (n < 0) && (m == 0) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (0 ::+ 0) = Na
+  | (n > 0) && (m == 0) = Sh (faToAcc ((n - 1) ::+ m))
+  | (n < 2) && (m == 1) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (2 ::+ 1) = Na
+  | (n > 2) && (m == 1) = Sh (faToAcc ((n - 1) ::+ m))
+  | (n < 3) && (m == 2) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (3 ::+ 2) = Na
+  | (n > 3) && (m == 2) = Sh (faToAcc ((n - 1) ::+ m))
+  | (n < 5) && (m == 3) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (5 ::+ 3) = Na
+  | (n > 5) && (m == 3) = Sh (faToAcc ((n - 1) ::+ m))
+  | (n < 7) && (m == 4) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (7 ::+ 4) = Na
+  | (n > 7) && (m == 4) = Sh (faToAcc ((n - 1) ::+ m))
+  | (n < 8) && (m == 5) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (8 ::+ 5) = Na
+  | (n > 8) && (m == 5) = Sh (faToAcc ((n - 1) ::+ m))
+  | (n < 10) && (m == 6) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (10 ::+ 6) = Na
+  | (n > 10) && (m == 6) = Sh (faToAcc ((n - 1) ::+ m))
+  | (n < 12) && (m == 7) = Fl (faToAcc ((n + 1) ::+ m))
+  | (n ::+ m) == (12 ::+ 7) = Na
+  | (n > 12) && (m == 7) = Sh (faToAcc ((n - 1) ::+ m))
+
 
 instance Transpose AbstractPitch2 AbstractInt2 where
   transpose (AbstractInt2 q i) (AbstractPitch2 n a) = toPitch $ (faPitch n a) + (faInt q i)
@@ -736,25 +824,38 @@ instance Transpose AbstractPitch2 AbstractInt2 where
 
 -- todo: measure AbstractInt3 in cents
 instance Transpose AbstractPitch3 AbstractInt3 where
-  transpose (AbstractInt3 df) (AbstractPitch3 f) = AbstractPitch3 (f + df)
-  interval (AbstractPitch3 f) (AbstractPitch3 g) = AbstractInt3 (g - f)
-  normalise (AbstractPitch3 f) (AbstractInt3 df) (AbstractPitch3 g)
+  transpose (AbstractInt3 i) (AbstractPitch3 f) = AbstractPitch3 (f * i)
+  interval (AbstractPitch3 f) (AbstractPitch3 g) = AbstractInt3 (g / f)
+  normalise (AbstractPitch3 f) (AbstractInt3 i) (AbstractPitch3 g)
     | upper/lower <= 0.5 = undefined
     | (current >= lower) && (current < upper) = AbstractPitch3 g
-    | current < lower = normalise (AbstractPitch3 f) (AbstractInt3 df) (AbstractPitch3 (g*2))
-    | otherwise = normalise (AbstractPitch3 f) (AbstractInt3 df) (AbstractPitch3 (g/2))
+    | current < lower = normalise (AbstractPitch3 f) (AbstractInt3 i) (AbstractPitch3 (g*2))
+    | otherwise = normalise (AbstractPitch3 f) (AbstractInt3 i) (AbstractPitch3 (g/2))
     where lower = f
-          upper = f + df
+          upper = f * i
           current = g
 
 
 instance Duration AbstractDur1 where
+  combine (AbstractDur1 a) (AbstractDur1 b) = AbstractDur1 $ Tie a b
 
 instance Duration AbstractDur2 where
+  combine (AbstractDur2 (nd -> (0, _))) _ = error "no zero durations!"
+  combine _ (AbstractDur2 (nd -> (0, _))) = error "no zero durations!"
+  combine (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
 
 instance Duration AbstractDur3 where
---  stretch (AbstractDur3 f) (AbstractDur3 df) = (AbstractDur3 (f * df))
+  combine (AbstractDur3 0) _ = error "no zero durations!"
+  combine _ (AbstractDur3 0) = error "no zero durations!"
+  combine (AbstractDur3 t) (AbstractDur3 r) = AbstractDur3 (t + r)
 
+
+-- Durations are a semigroup because zero-length durations are forbidden
+instance Duration d => Semigroup d where
+  (<>) = combine
+  
+
+  
 
 data Metronome = Metronome Int
 
@@ -771,83 +872,89 @@ instance Timing Metronome AbstractDur2 where
 
 
 
--------- handy shortcuts:
-
-pitch :: Name -> Accidental -> AbstractPitch2
-pitch n a = AbstractPitch2 n a
-
-freq :: Double -> AbstractPitch3
-freq f = AbstractPitch3 f
-
-int :: Quality -> Number -> AbstractInt2
-int q n = AbstractInt2 q n
-
-note :: AbstractPitch2 -> AbstractDur2 -> Note2
-note p d = AbstractPitch p d
-
-relnote :: AbstractInt2 -> AbstractDur2 -> Note2
-relnote i d = AbstractInt i d
-
-rhythm a b = AbstractDur2 (a % b)
-crotchet = rhythm 1 4
-minim = rhythm 1 2
-semibreve = rhythm 1 1
-quaver = rhythm 1 8
-semiquaver = rhythm 1 16
-
-dotted (AbstractDur2 r) = AbstractDur2 (r * (3%2))
-ddotted (AbstractDur2 r) = AbstractDur2 (r * (7%4))
-tdotted (AbstractDur2 r) = AbstractDur2 (r * (15%8))
-
-tie (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
-
-noteToSound :: (Tuning t AbstractPitch2 AbstractInt2, Timing i AbstractDur2) => t -> i -> Note2 -> Note3
-noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
-noteToSound _ timing (Rest d) = Rest (time timing d)
-
--- rest = AbstractNote Silence mi
-
--- data Phrase p i d where
---   makePhrase :: Note p i d => Phrase
-
--- data Phrase p i d where
--- --  Notes :: [Note] -> Phrase
--- --  Phrase :: (Transpose p i, Duration d) => [(AbstractNote p i d)] -> Phrase
-  -- Phrase :: [(AbstractNote p i d)] -> Phrase p i d
-  -- Blank :: Phrase p i d
--- 
--- -- deriving instance Show Phrase
--- 
--- instance Show (Phrase p i d) where
-  -- show (Phrase p) = show p
-  
-
--- data AbstractPhrase p i d = Phrase [(AbstractNote p i d)]
-                          -- | Blank
-                          -- deriving Show
-
 data AbstractPhrase n where -- a phrase tied to a particular type of note
   AbstractPhrase :: (Note p i d) => [AbstractNote p i d] -> AbstractPhrase (AbstractNote p i d)
 
 -- instance Functor AbstractPhrase where
 --  fmap = mapPhrase -- not working :-(
 
-mapPhrase :: (Note p i d, Note p' i' d') =>
-             (AbstractNote p i d -> AbstractNote p' i' d') -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p' i' d')
-mapPhrase f p = listToPhrase $ map f (phraseToList p)
+sharpenAndDouble :: Note p i d => AbstractNote p i d -> AbstractNote p i d -- an example function to use with mapPhrase
+sharpenAndDouble (AbstractPitch p d) = AbstractPitch (sharpen p) (combine d d)
+sharpenAndDouble (AbstractInt p d) = AbstractInt (augment p) (combine d d)
+sharpenAndDouble (Conn (AbstractPhrase ns)) = Conn (AbstractPhrase (map sharpenAndDouble ns))
 
-concatPhrase :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
-concatPhrase a b = listToPhrase $ (phraseToList a) ++ (phraseToList b)
+mapPhrase :: (Note p i d, Note p' i' d')
+             => (AbstractNote p i d -> AbstractNote p' i' d') -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p' i' d')
 
-nullPhrase :: (Note p i d) => AbstractPhrase (AbstractNote p i d)
-nullPhrase = AbstractPhrase []
+mapPhrase f (AbstractPhrase ((Conn p):[])) = AbstractPhrase [Conn (mapPhrase f p)]
+mapPhrase f (AbstractPhrase (n:[])) = AbstractPhrase [f n]
 
-phraseToList :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> [AbstractNote p i d]
-phraseToList (AbstractPhrase ns) = ns
+mapPhrase f (AbstractPhrase ((Conn p):ns)) = (AbstractPhrase [Conn (mapPhrase f p)]) <> (mapPhrase f (AbstractPhrase ns))
+mapPhrase f (AbstractPhrase (n:ns)) = (AbstractPhrase [f n]) <> (mapPhrase f (AbstractPhrase ns))
 
-listToPhrase :: (Note p i d) => [AbstractNote p i d] -> AbstractPhrase (AbstractNote p i d)
-listToPhrase ns = (AbstractPhrase ns)
 
+
+foldPhrase :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+
+foldPhrase f (AbstractPhrase (n:[])) =
+  case n of (Conn p) -> foldPhrase f p
+            p -> p
+
+foldPhrase f (AbstractPhrase (n:ns)) =
+  case n of (Conn p) -> f (foldPhrase f p) (foldPhrase f (AbstractPhrase ns))
+            p -> f p (foldPhrase f (AbstractPhrase ns))
+
+
+
+isConn (Conn _) = True
+isConn _ = False
+
+
+-- foldPhrase with *no* recursion into connected phrases -- they're simply ignored.
+foldPhraseSingle :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+foldPhraseSingle f (AbstractPhrase p) = foldPhrase' f (AbstractPhrase (filter (not . isConn) p)) where
+  foldPhrase' :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+  foldPhrase' f (AbstractPhrase (n:(Conn _):[])) = n
+  foldPhrase' f (AbstractPhrase (n:[])) = n
+  foldPhrase' f (AbstractPhrase ((Conn _):ns)) = foldPhrase' f (AbstractPhrase ns)
+  foldPhrase' f (AbstractPhrase (n:(Conn _):ns)) = f n (foldPhrase' f (AbstractPhrase ns))
+  foldPhrase' f (AbstractPhrase (n:ns)) = f n (foldPhrase' f (AbstractPhrase ns))
+  foldPhrase' _ p = error ("Exhausted patterns in foldPhraseSingle: " ++ (show p))
+
+extractDur :: (Note p i d) => (AbstractNote p i d) => d
+extractDur (AbstractPitch _ d) = d
+extractDur (AbstractInt _ d) = d
+extractDur (Rest d) = d
+extractDur p = error ("Trying to extract duration from value with no duration: " ++ (show p))
+
+
+countDurs :: Note p i d => AbstractPhrase (AbstractNote p i d) -> d
+countDurs p = extractDur (countDurs' p) where
+  countDurs' = foldPhraseSingle (\n -> \n' -> Rest $ (extractDur n) <> (extractDur n'))
+
+
+-- Walk along phrase until we find a connection to another phrase;
+-- split off and insert correct number of rests in front of new
+-- phrase. Repeat this procedure on all newly-discovered phrases,
+-- recursively.
+splitVoices :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> [AbstractPhrase (AbstractNote p i d)]
+splitVoices (AbstractPhrase ns) =
+  let before = takeWhile (not . isConn) ns
+      after' = dropWhile (not . isConn) ns
+      connector = head after'
+      after = tail after'
+      rest = AbstractPhrase $ [Rest $ countDurs (AbstractPhrase before)]
+  in if null after'
+     then [AbstractPhrase before]
+     else case connector of
+       (Conn p) -> if null before
+                   then (splitVoices p) ++ (splitVoices (AbstractPhrase (before ++ after)))
+                   else (splitVoices (rest <> p)) ++ (splitVoices (AbstractPhrase (before ++ after)))
+
+
+
+
+-- todo: rewrite absolute in a foldPhrase/countDurs style.
 absolute :: (Transpose p i, Duration d) => AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
 absolute (AbstractPhrase (n:ns)) = AbstractPhrase (n:(absolute' n ns))
   where absolute' _ ((AbstractPitch p d):notes) = (AbstractPitch p d) : (absolute' (AbstractPitch p d) notes)
@@ -858,32 +965,69 @@ absolute (AbstractPhrase (n:ns)) = AbstractPhrase (n:(absolute' n ns))
 instance Show (AbstractNote p i d) => Show (AbstractPhrase (AbstractNote p i d)) where
   show (AbstractPhrase x) = show x
 
-data Phrase where -- a generic phrase that subsumes AbstractPhrases
-  Phrase :: Show (AbstractNote p i d) => (AbstractPhrase (AbstractNote p i d)) -> Connector -> Phrase
-  Blank :: Connector -> Phrase
-
-instance Show Phrase where
-  show (Phrase p c) = (show p) ++ "->" ++ (show c)
-  show (Blank c) = "…" ++ "->" ++ (show c)
-
-makePhrase :: [Note2] -> Connector -> Phrase
-makePhrase x c = Phrase (AbstractPhrase x) c
-
-data Voice = Voice [Phrase]
-           deriving Show
-
-data VoiceName = V Integer deriving (Eq, Ord)
-
-instance Show VoiceName where
-  show (V n) = "v" ++ (show n)
-
-data Music = Voices (Map.Map VoiceName Voice)
-           | Start Phrase
-           deriving Show
+--data Phrase where -- a generic phrase that subsumes AbstractPhrases
+--   Phrase :: Show (AbstractNote p i d) => (AbstractPhrase (AbstractNote p i d)) -> Connector -> Phrase
+--  Phrase :: Show (AbstractNote p i d) => (AbstractPhrase (AbstractNote p i d)) -> Phrase
+--  Blank :: Connector -> Phrase
+-- maybe just rename Phrase 'Voice'.
 
 
-------------------------
+-- instance Show Phrase where
+--   show (Phrase p c) = (show p) ++ (show c)
+--  show (Phrase p) = (show p)
+--  show (Blank c) = "…" ++ (show c)
 
+-- Phrases are a semigroup because phrases containing zero notes are forbidden.
+instance (Note p i d) => Semigroup (AbstractPhrase (AbstractNote p i d)) where
+  (AbstractPhrase []) <> _ = error "no empty phrases!"
+  _ <> (AbstractPhrase []) = error "no empty phrases!"
+  (AbstractPhrase a) <> (AbstractPhrase b) = AbstractPhrase $ a ++ b
+  
+  
+-- makePhrase :: Note p i d => [AbstractNote p i d] -> Connector -> Phrase
+-- makePhrase x c = Phrase (AbstractPhrase x) c
+
+-- makePhrase :: Note p i d => [AbstractNote p i d] -> Phrase
+-- makePhrase x = Phrase (AbstractPhrase x)
+
+
+
+-- repeatPhrase n p = Phrase $ repeatPhrase' n p
+--   where repeatPhrase' 1 p = p
+--         repeatPhrase' n p = p <> (conn (Phrase (repeatPhrase' (n - 1) p)))
+
+repeatPhrase 1 p = p
+-- repeatPhrase n p = p <> (conn (Phrase (repeatPhrase' (n - 1) p)))
+repeatPhrase n p = p <> (repeatPhrase (n - 1) p)
+
+
+-- data Voice = Voice [Phrase]
+--            deriving Show
+
+-- data VoiceName = V Integer deriving (Eq, Ord)
+
+-- instance Show VoiceName where
+--   show (V n) = "v" ++ (show n)
+
+-- data Music = Voices (Map.Map VoiceName Voice) -- ignore 'Voices' for now.
+--            | Start Phrase -- just use this, then produce a tree structure.
+--            deriving Show
+
+data Music n where
+  Start :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> Music (AbstractNote p i d)
+  Voices :: (Show p, Show i, Show d, Note p i d) => [AbstractPhrase (AbstractNote p i d)] -> Music (AbstractNote p i d)
+
+deriving instance Show (Music n)
+
+
+explodeVoices :: (Note p i d) => Music (AbstractNote p i d) -> Music (AbstractNote p i d)
+explodeVoices (Start p) = Voices $ splitVoices p
+explodeVoices (Voices ps) = Voices $ concatMap splitVoices ps
+
+mapMusic :: (Note p i d, Note p' i' d')
+             => (AbstractNote p i d -> AbstractNote p' i' d') -> Music (AbstractNote p i d) -> Music (AbstractNote p' i' d')
+mapMusic f (Start p) = Start (mapPhrase f p)
+mapMusic f (Voices ps) = Voices $ map (mapPhrase f) ps
 
 
 

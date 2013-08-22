@@ -1,23 +1,35 @@
+{-# LANGUAGE EmptyDataDecls, 
+             MultiParamTypeClasses, 
+             GADTs,
+             RankNTypes,
+             FlexibleInstances #-}
+
 module Canon where
 
-import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metronome(..),
+import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metronome(..), Duration(..),
               AbstractInt1(..), AbstractPitch1(..), AbstractDur1(..),
               AbstractInt2(..), AbstractPitch2(..), AbstractDur2(..),
               AbstractInt3(..), AbstractPitch3(..), AbstractDur3(..),
+              Note(..),
               Name(..), Number(..), Accidental(..), Quality(..),
               Pitch(..), Interval(..),
               Transpose(..),
               AbstractNote(..), Note1, Note2, Note3,
-              AbstractPhrase(..), Phrase(..),
-              pitch, int, rhythm, sharp, flat, Degree(..), Ficta(..), freq, noteToSound,
-              crotchet, minim, semibreve, quaver, semiquaver, dotted, tie,
-              mapPhrase, absolute, normalise, concatPhrase, nullPhrase, freq)
+              AbstractPhrase(..),
+              Degree(..), Ficta(..), noteToSound,
+              mapPhrase, absolute, normalise, conn, repeatPhrase, foldPhrase, countDurs,
+              explodeVoices, splitVoices, mapMusic,
+              Music(..))
 
 import Tuning (Equal(..), Pythagorean(..), QCMeanTone(..))
 import Scales (minor, major, HarmonicMinor(..), Minor, Major, harmonicminor, infiniteScale)
+import Shortcuts
 
-import Output (csoundFreqs, playCsound, playCsounds)
+import Output
+import Lilypond
 
+import Data.Ratio
+import Data.Semigroup hiding (Min)
 ----
 
 bassnotes = map (\d -> AbstractPitch1 d Neutral)
@@ -48,19 +60,23 @@ bass = AbstractPhrase (zipWith AbstractPitch
                        (map ((transpose (int Perf ((Negative . Compound . Compound) (Compound Unison)))) . (applyScale key)) bassnotes)
                        (repeat crotchet))
 
-rests = AbstractPhrase [Rest semibreve, Rest semibreve]
+cphrase p d k = AbstractPhrase (zipWith AbstractPitch (map (applyScale k) p) d)
 
-phrase p d k = AbstractPhrase (zipWith AbstractPitch (map (applyScale k) p) d)
+p1 = cphrase p1notes (repeat crotchet) key
+p2 = cphrase p2notes (repeat crotchet) key
+p3 = cphrase p3notes (repeat quaver) key
+p4 = cphrase p4notes p4rhythms key
+p5 = cphrase p5notes (repeat semiquaver) key
 
-p1 = phrase p1notes (repeat crotchet) key
-p2 = phrase p2notes (repeat crotchet) key
-p3 = phrase p3notes (repeat quaver) key
-p4 = phrase p4notes p4rhythms key
-p5 = phrase p5notes (repeat semiquaver) key
+v1 = (conn v4) <> p1 <> (conn v2) <> p2 <> p3 <> p4 <> p5 
+v2 = p1 <> (conn v3) <> p2 <> p3 <> p4
+v3 = p1 <> p2 <> p3 
+v4 = repeatPhrase 5 bass
 
-v1 = [rests, p1, p2, p3, p4, p5]
-v2 = rests:v1
-v3 = rests:v2
-v4 = take (length v1) $ (repeat bass)
+et = Equal (a, freq 440)
 
-phrases t = map (mapPhrase (noteToSound t (Metronome 120))) (map (foldl concatPhrase nullPhrase) [v1,v2,v3,v4])
+m = Metronome 120
+
+canon = Start v1
+
+voices = explodeVoices canon

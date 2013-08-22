@@ -28,13 +28,12 @@ import Util (interleave)
 
 import Music (Name(..), Accidental(..),
               Quality(..), Number(..),
-              sharp, flat, natural, pitch, int, note, relnote,
-              crotchet, minim, semibreve, quaver,
               AbstractPitch3(..), AbstractInt3(..), AbstractDur3(..),
               AbstractPitch2(..), AbstractInt2(..), AbstractDur2(..),
               AbstractNote(..), Note, Tuning(..), Transpose(..),
               Freq, add, sub, invert, negate, transpose, interval, octave,
-              faInt, faPitch, FreeAbelian(..), freq, intToFa, pitchToFa, toInterval, toPitch)
+              faInt, faPitch, FreeAbelian(..), intToFa, pitchToFa, toInterval, toPitch)
+import Shortcuts
 
 import Control.Monad
 import Data.Ratio

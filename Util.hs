@@ -6,6 +6,7 @@ module Util where
 
 import Control.Monad
 import Data.Ratio
+import Data.Semigroup
 
 interleave (x:xs) (y:ys) = [x, y] ++ (interleave xs ys)
 
@@ -31,4 +32,6 @@ rotateN n = rotate . (rotateN (n - 1))
 nd :: (Integral a) => Ratio a -> (a,a)
 nd r = (numerator r, denominator r)
 
+
+foldSG l = foldl1 (<>) l
 

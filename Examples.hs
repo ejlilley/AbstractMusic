@@ -10,21 +10,20 @@ import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metro
               Transpose(..),
               AbstractNote(..), Note1, Note2, Note3,
               AbstractPhrase(..), Phrase(..),
-              pitch, int, rhythm, sharp, flat, Degree(..), Ficta(..), freq, octave, noteToSound,
-              crotchet, minim, semibreve, quaver, dotted, tie,
+              Degree(..), Ficta(..), noteToSound,
               mapPhrase, absolute, normalise, faInt, faPitch)
 
 import Tuning (Equal(..), Pythagorean(..), QCMeanTone(..))
 import Scales (minor, major, HarmonicMinor(..), Minor, Major,
                harmonicminor, infiniteScale, chromaticScale)
-
-import Output (csoundFreqs, playCsound, playCsounds, testFreqs)
+import Shortcuts
+import Lilypond
+import Output
 
 -- example notes:
 fsharp = pitch F (Sh Na)
 gsharp = pitch G (Sh Na)
 gsharp' = pitch (Up G) (Sh Na)
-d5 = int (Dim Perf) Fifth
 
 n1 :: Note2
 n1 = AbstractPitch fsharp quaver
@@ -55,15 +54,15 @@ quavercmajscale = map (\n -> AbstractPitch n quaver) (scale cmajor)
 -- example tuning systems:
 p = Pythagorean (pitch A Na, AbstractPitch3 440.0)
 
-e = Equal (pitch A Na, AbstractPitch3 440.0)
+et = Equal (pitch A Na, AbstractPitch3 440.0)
 
 q = QCMeanTone (pitch A Na, AbstractPitch3 440.0)
 
 m = Metronome 240
 
 -- tuning some scales:
-frequencies = map (tune e) (scale cmajor)
-frequencies' = map (tune e) (scale csharpminor)
+frequencies = map (tune et) (scale cmajor)
+frequencies' = map (tune et) (scale csharpminor)
 
 
 -- Play a tune
@@ -83,7 +82,7 @@ notes = [AbstractPitch1 TO Neutral,
 
 durs = [minim, minim, minim, minim, minim, crotchet, crotchet, tie minim quaver, quaver, quaver, quaver, crotchet]
 
-notes1 = map (applyScale cmajor) notes
+notes1 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale cmajor) notes) (repeat crotchet)
 
-notes2 = map (applyScale (harmonicminor (pitch D Na))) notes
+notes2 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale (harmonicminor (pitch D Na))) notes) (repeat crotchet)
 
