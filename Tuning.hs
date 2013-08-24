@@ -25,11 +25,15 @@ module Tuning (Tuning(..),
                Equal(..),
                QCMeanTone(..),
                SeptimalMeanTone(..),
+               TET7(..),
+               TET17(..),
                TET19(..),
+               TET22(..),
                TET24(..),
                TET31(..),
                TET54(..),
-               TET72(..)) where
+               TET72(..),
+               DummyTuning(..)) where
 
 import Prelude hiding (negate)
 
@@ -137,19 +141,38 @@ instance Tuning TET19 AbstractPitch2 AbstractInt2 where
   tuneInt _ = edoTune (edo 19) (1, 1)
 
 
+data TET7 = TET7 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET7 AbstractPitch2 AbstractInt2 where
+  base (TET7 b) = b
+  tuneInt _ = edoTune (edo 7) (0, 1)
+
+data DummyTuning = DummyTuning (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning DummyTuning AbstractPitch2 AbstractInt2 where
+  base (DummyTuning b) = b
+  tuneInt _ _ = AbstractInt3 1
+
+
 -- data TET17 -- todo: implement the arabic system of notation/scales,
 -- then use TET17 as its tuning system.
+data TET17 = TET17 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET17 AbstractPitch2 AbstractInt2 where
+  base (TET17 b) = b
+  tuneInt _ = edoTune (edo 17) (2, -1)
 
 -- data Indian22 -- todo: implement the Indian system of notation/scales,
 -- then use this as its tuning system.
 
--- data TET22 -- todo: the EDO-version of Indian22 above.
+-- the EDO-version of Indian22 above (maybe)
+data TET22 = TET22 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET22 AbstractPitch2 AbstractInt2 where
+  base (TET22 b) = b
+  tuneInt _ = edoTune (edo 22) (3, -2)
 
 -- TET12 + quarter-tones:
 data TET24 = TET24 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET24 AbstractPitch2 AbstractInt2 where
   base (TET24 b) = b
-  tuneInt _ = edoTune (edo 24) (1, 2)
+  tuneInt _ = edoTune (edo 24) (2, 0)
 
 
 data TET31 = TET31 (AbstractPitch2, AbstractPitch3) deriving Show
@@ -167,10 +190,11 @@ instance Tuning TET54 AbstractPitch2 AbstractInt2 where
   base (TET54 b) = b
   tuneInt _ = edoTune (edo 54) (1, 6)
 
+-- TET12 divided by 6:
 data TET72 = TET72 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET72 AbstractPitch2 AbstractInt2 where
   base (TET72 b) = b
-  tuneInt _ = edoTune (edo 72) (-1, 12)
+  tuneInt _ = edoTune (edo 72) (6, 0)
 
 
 -- Zarlino's Just scale uses: makeBasis i (m3, 6/5) (_M3, 5/4)

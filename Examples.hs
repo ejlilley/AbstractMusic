@@ -9,11 +9,11 @@ import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metro
               Pitch(..), Interval(..),
               Transpose(..),
               AbstractNote(..), Note1, Note2, Note3,
-              AbstractPhrase(..), Phrase(..),
+              AbstractPhrase(..),
               Degree(..), Ficta(..), noteToSound,
               mapPhrase, absolute, normalise, faInt, faPitch)
 
-import Tuning (Equal(..), Pythagorean(..), QCMeanTone(..))
+import Tuning
 import Scales (minor, major, HarmonicMinor(..), Minor, Major,
                harmonicminor, infiniteScale, chromaticScale)
 import Shortcuts
