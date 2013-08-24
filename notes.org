@@ -8,3 +8,12 @@ http://archive.cs.uu.nl/pub/MIDI/DOC/Tunings
 
 * Geometry
 http://ticsp.cs.tut.fi/index.php/The_Structure_of_Rational_Scales_and_Intervals_in_Music_-_A_geometrical_view
+* Converting to relative pitches for Lilypond
+
+
+A G => A G'
+
+A G, => A G
+
+* Produce nice output:
+pandoc -S --self-contained --highlight-style=haddock -f markdown+lhs -t html Costeley.lhs

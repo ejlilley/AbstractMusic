@@ -1,19 +1,29 @@
-module Shortcuts (pitch, freq, int, rhythm, dotted, ddotted, tdotted, tie, phrase, note,
-                  crotchet, minim, semibreve, breve, long, quaver, semiquaver,
+{-# LANGUAGE EmptyDataDecls, 
+             MultiParamTypeClasses, 
+             FunctionalDependencies,
+             PostfixOperators,
+             FlexibleContexts #-}
+
+
+module Shortcuts (pitch, freq, int, rhythm, dotted, ddotted, tdotted, tie, phrase, note, rest,
+                  crotchet, minim, semibreve, breve, long, quaver, semiquaver, conn, co,
+                  m, cr, br, s, q, sq,
                   demisemiquaver, hemidemisemiquaver,
                   sharp, flat, natural,
-                  aes, a, ais, bes, b, bis, ces, c, cis, des, d, dis, ees, e, eis, fes, f, fis, ges, g, gis,
+                  aeses, aes, a, ais, aisis, beses, bes, b, bis, bisis, ceses, ces, c, cis, cisis, deses, des, d, dis, disis,
+                  eeses, ees, e, eis, eisis, feses, fes, f, fis, fisis, geses, ges, g, gis, gisis,
                   d1, _P1, _A1, d2, m2, _M2, _A2, d3, m3, _M3, _A3, d4, _P4, _A4, d5, _P5, _A5, d6, m6, _M6, _A6, d7, m7, _M7, _A7, d8, _P8, _A8,
-                  comma) where
+                  comma, (.+^), (<>), (.-^), (.-.), (^-^), (^+^), (^*), (*^), Interval(..), Pitch(..), Duration(..),
+                  (∨), (∧), (∨∨), (∧∧)) where
 
-import Prelude hiding ((^))
 import Data.Ratio
 import Music (AbstractPitch2(..), AbstractInt2(..), AbstractDur2(..),
               AbstractPitch3(..), AbstractInt3(..), AbstractDur3(..),
               AbstractPitch1(..), AbstractInt1(..), AbstractDur1(..),
               Name(..), Quality(..), Number(..), Accidental(..), Note2(..),
               AbstractNote(..), AbstractPhrase(..), Pitch(..), Interval(..),
-              Transpose(..), Note(..), Duration(..))
+              Transpose(..), Note(..), Duration(..), FreeAbelian(..),
+              pitchToFa, intToFa)
 
 import Data.AdditiveGroup
 import Data.AffineSpace
@@ -34,6 +44,10 @@ int q n = AbstractInt2 q n
 
 rhythm a b = AbstractDur2 (a % b)
 
+conn c = AbstractPhrase [Conn c]
+
+co c = Conn c
+
 dotted (AbstractDur2 r) = AbstractDur2 (r * (3%2))
 ddotted (AbstractDur2 r) = AbstractDur2 (r * (7%4))
 tdotted (AbstractDur2 r) = AbstractDur2 (r * (15%8))
@@ -41,51 +55,94 @@ tdotted (AbstractDur2 r) = AbstractDur2 (r * (15%8))
 tie (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
 
 (∧) p = p .+^ octave
+(∧∧) p = p .+^ octave .+^ octave
 (∨) p = p .-^ octave
+(∨∨) p = p .-^ octave .-^ octave
 
+(!) :: Int -> Int
+(!) 1 = 1
+(!) x = x * (!) (x - 1)
+        
 phrase ns = AbstractPhrase ns
 note p d = AbstractPitch p d
+
+rest d = Rest d
 
 ---- note durations
 
 crotchet = rhythm 1 4
+cr = crotchet
 minim = rhythm 1 2
+m = minim
 semibreve = rhythm 1 1
+s = semibreve
 breve = rhythm 2 1
+br = breve
 long = rhythm 4 1
 quaver = rhythm 1 8
+q = quaver
 semiquaver = rhythm 1 16
+sq = semiquaver
 demisemiquaver = rhythm 1 32
 hemidemisemiquaver = rhythm 1 64
 
 ---- note pitches
 
 sharp = Sh Na
+dsharp = Sh sharp
 flat = Fl Na
+dflat = Fl flat
 natural = Na
 
-aes = pitch A flat
-a = pitch A natural
-ais = pitch A sharp
-bes = pitch B flat
-b = pitch B natural
-bis = pitch B sharp
-ces = pitch C flat
-c = pitch C natural
-cis = pitch C sharp
-des = pitch D flat
-d = pitch D natural
-dis = pitch D sharp
-ees = pitch E flat
-e = pitch E natural
-eis = pitch E sharp
-fes = pitch F flat
-f = pitch F natural
-fis = pitch F sharp
-ges = pitch G flat
-g = pitch G natural
-gis = pitch G sharp
+aeses = pitch A dflat
+aes   = pitch A flat
+a     = pitch A natural
+ais   = pitch A sharp
+aisis = pitch A dsharp
 
+beses = pitch B dflat
+bes   = pitch B flat
+b     = pitch B natural
+bis   = pitch B sharp
+bisis = pitch B dsharp
+
+ceses = pitch C dflat  
+ces   = pitch C flat   
+c     = pitch C natural
+cis   = pitch C sharp  
+cisis = pitch C dsharp 
+
+deses = pitch D dflat  
+des   = pitch D flat   
+d     = pitch D natural
+dis   = pitch D sharp  
+disis = pitch D dsharp 
+
+eeses = pitch E dflat  
+ees   = pitch E flat   
+e     = pitch E natural
+eis   = pitch E sharp  
+eisis = pitch E dsharp 
+
+feses = pitch F dflat  
+fes   = pitch F flat   
+f     = pitch F natural
+fis   = pitch F sharp  
+fisis = pitch F dsharp 
+
+geses = pitch G dflat  
+ges   = pitch G flat   
+g     = pitch G natural
+gis   = pitch G sharp  
+gisis = pitch G dsharp 
+
+noteList = [aeses, aes, a, ais, aisis,
+            beses, bes, b, bis, bisis,
+            ceses, ces, c, cis, cisis,
+            deses, des, d, dis, disis,
+            eeses, ees, e, eis, eisis,
+            feses, fes, f, fis, fisis,
+            geses, ges, g, gis, gisis]
 
 ---- intervals
 

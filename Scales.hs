@@ -161,9 +161,11 @@ basicDoubleHarmonic = [AbstractPitch2 C Na,
 major :: AbstractPitch2 -> Major
 major n = Ionian n
 minor :: AbstractPitch2 -> Minor
-minor n = Aeolian n
+minor n = Aeolian (n .-^ octave)
 harmonicminor :: AbstractPitch2 -> HarmonicMinor
 harmonicminor n = HarmonicMinor n
+melodicminor :: AbstractPitch2 -> MelodicMinor
+melodicminor n = MelodicMinor n
 
 chromaticScale p@(AbstractPitch2 n a)
   | (n == B) || (n == E) || (a == sharp) = p:(chromaticScale (AbstractPitch2 (succ n) Na))

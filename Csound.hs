@@ -1,3 +1,9 @@
+{-# LANGUAGE EmptyDataDecls, 
+             MultiParamTypeClasses, 
+             GADTs,
+             RankNTypes,
+             FlexibleInstances #-}
+
 module Csound where
 
 import Music (Note3, AbstractNote(..), AbstractPitch3(..), AbstractInt3(..), AbstractDur3(..), absolute, AbstractPhrase(..), Note(..), Music(..), explodeVoices)
