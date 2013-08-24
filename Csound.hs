@@ -49,6 +49,7 @@ csounds notes = csoundHeader ++ "\n" ++ foldl (++) "" (map (csoundPhrase 0) note
 csoundPhrase _ [] = ""
 csoundPhrase n ((AbstractPitch (AbstractPitch3 p) (AbstractDur3 d)):notes) = (csoundLine n (d/1000) p) ++ (csoundPhrase (n + (d/1000)) notes)
 csoundPhrase n ((Rest (AbstractDur3 d)):notes) = (csoundLine n (d/1000) 0) ++ (csoundPhrase (n + (d/1000)) notes)
+csoundPhrase n (d:notes) = csoundPhrase n notes
 
 
 

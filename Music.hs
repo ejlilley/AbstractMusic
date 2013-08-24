@@ -38,6 +38,8 @@ import Data.AffineSpace
 import Data.VectorSpace
 import Data.Semigroup hiding (Min)
 
+import qualified Music.Lilypond as L
+
 import Util (interleave, iterateM,
              compose, member, intersection,
              remove, nd, foldSG)
@@ -314,6 +316,7 @@ class (Duration d) => Timing t d | t -> d where
 noteToSound :: (Tuning t AbstractPitch2 AbstractInt2, Timing i AbstractDur2) => t -> i -> Note2 -> Note3
 noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
 noteToSound _ timing (Rest d) = Rest (time timing d)
+noteToSound _ timing (Directive d) = (Directive d)
 
 --------------
 
@@ -445,6 +448,7 @@ data AbstractNote p i d where
   AbstractInt :: (Note p i d, Show i, Show d) => i -> d -> (AbstractNote p i d)
   Rest :: (Duration d, Show d) => d -> (AbstractNote p i d)
   Conn :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
+  Directive :: L.Music -> AbstractNote p i d
 --  Conn :: (Note p i d, Note p' i' d') => AbstractPhrase
 --  (AbstractNote p' i' d') -> (AbstractNote p i d) -- ideally we want
 --  Conn to be able to contain an AbstractPhrase of an arbitrary type,
@@ -484,12 +488,14 @@ instance Show Note2 where
   show (AbstractInt i d) = "{" ++ (show i) ++ " " ++ (showNote d) ++ "}"
   show (Rest d) = "{" ++ (showRest d) ++ "}"
   show (Conn c) = "{" ++ (show c) ++ "}"
+  show (Directive c) = "{" ++ (show c) ++ "}"
 
 instance Show (AbstractNote p i d) where
   show (AbstractPitch p d) = "Note{" ++ (show p) ++ " " ++ (show d) ++ "}"
   show (AbstractInt i d) = "Interval{" ++ (show i) ++ " " ++ (show d) ++ "}"
   show (Rest d) = "Rest{" ++ (show d) ++ "}"
   show (Conn c) = "{" ++ (show c) ++ "}"
+  show (Directive c) = "{" ++ (show c) ++ "}"
 
 -- deriving instance Show AbstractNote -- or this!
 
@@ -934,6 +940,7 @@ foldPhrase f (AbstractPhrase (n:[])) =
 
 foldPhrase f (AbstractPhrase (n:ns)) =
   case n of (Conn p) -> f (foldPhrase f p) (foldPhrase f (AbstractPhrase ns))
+            (Directive _) -> foldPhrase f (AbstractPhrase ns)
             p -> f p (foldPhrase f (AbstractPhrase ns))
 
 
@@ -947,9 +954,12 @@ foldPhraseSingle :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> A
 foldPhraseSingle f (AbstractPhrase p) = foldPhrase' f (AbstractPhrase (filter (not . isConn) p)) where
   foldPhrase' :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
   foldPhrase' f (AbstractPhrase (n:(Conn _):[])) = n
+  foldPhrase' f (AbstractPhrase (n:(Directive _):[])) = n
   foldPhrase' f (AbstractPhrase (n:[])) = n
   foldPhrase' f (AbstractPhrase ((Conn _):ns)) = foldPhrase' f (AbstractPhrase ns)
+  foldPhrase' f (AbstractPhrase ((Directive _):ns)) = foldPhrase' f (AbstractPhrase ns)
   foldPhrase' f (AbstractPhrase (n:(Conn _):ns)) = f n (foldPhrase' f (AbstractPhrase ns))
+  foldPhrase' f (AbstractPhrase (n:(Directive _):ns)) = f n (foldPhrase' f (AbstractPhrase ns))
   foldPhrase' f (AbstractPhrase (n:ns)) = f n (foldPhrase' f (AbstractPhrase ns))
   foldPhrase' _ p = error ("Exhausted patterns in foldPhraseSingle: " ++ (show p))
 
@@ -992,7 +1002,7 @@ absolute :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> AbstractPhras
 absolute (AbstractPhrase (n:ns)) = AbstractPhrase (n:(absolute' n ns))
   where absolute' _ ((AbstractPitch p d):notes) = (AbstractPitch p d) : (absolute' (AbstractPitch p d) notes)
         absolute' base@(AbstractPitch p _) ((AbstractInt i d):notes) = (AbstractPitch (transpose i p) d) : (absolute' base notes)
-        absolute' base ((Rest d):notes) = (Rest d) : (absolute' base notes)
+        absolute' base (p:notes) = p : (absolute' base notes)
         absolute' _ [] = []
 
 

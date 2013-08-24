@@ -26,6 +26,7 @@ module Tuning (Tuning(..),
                QCMeanTone(..),
                SeptimalMeanTone(..),
                TET7(..),
+               TET12(..),
                TET17(..),
                TET19(..),
                TET22(..),
@@ -109,6 +110,7 @@ qcd2 = maked2 (_P8, 2) (_M3, 5/4) -- (diesis)
 -- integer coefficients. So, we exploit the fact that:
 --     M3 = 4*A1 + 2*d2
 -- ==> A1 = (1/4) * (M3 - 2*d2)
+-- And the resulting A1 & d2 are irrational.
 qcM3 = AbstractInt3 $ 5/4
 qcA1 = (1/4) *^ (qcM3 ^-^ (2 *^ qcd2))
 
@@ -119,15 +121,14 @@ instance Tuning QCMeanTone AbstractPitch2 AbstractInt2 where
 
 
 
--- fixme: this is wrong atm.
 data SeptimalMeanTone = SeptimalMeanTone (AbstractPitch2, AbstractPitch3)
                       deriving Show
 
+-- Once again, exploit some properties to derive the (irrational)
+-- values for A1 and d2.
 smtA6 = AbstractInt3 $ 7/4
--- exploiting the fact that A1 = (1/2) * (P8 - A6):
-smtA1 = (1/2) *^ (octave ^-^ smtA6)
--- and then, d2 = (1/5) * (A6 - 10*A1):
-smtd2 = (1/5) *^ (smtA6 ^-^ (10 *^ smtA1))
+smtA1 = (1/10) *^ ((7 *^ smtA6) ^-^ (5 *^ octave))
+smtd2 = (1/7) *^ (octave ^-^ (12 *^ smtA1))
 
 instance Tuning SeptimalMeanTone AbstractPitch2 AbstractInt2 where
   base (SeptimalMeanTone b) = b

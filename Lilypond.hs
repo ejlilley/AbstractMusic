@@ -53,6 +53,7 @@ instance Lily Note2 where
   toLily r@(Rest _) = let rs = splitRest r
                           lrs = map toLRest rs
                       in L.Sequential lrs
+  toLily (Directive d) = d                       
 
 toLRest (Rest d) = L.Rest (Just (toLDur d)) []
 
