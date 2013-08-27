@@ -313,11 +313,6 @@ class (Duration d) => Timing t d | t -> d where
   time :: t -> d -> AbstractDur3
 
 
-noteToSound :: (Tuning t AbstractPitch2 AbstractInt2, Timing i AbstractDur2) => t -> i -> Note2 -> Note3
-noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
-noteToSound _ timing (Rest d) = Rest (time timing d)
-noteToSound _ timing (Directive d) = (Directive d)
-
 --------------
 
 instance Ord Name where
@@ -614,7 +609,7 @@ data FreeAbelian = Int ::+ Int deriving (Show, Eq)
 -- We're using the type 'FreeAbelian' to represent (n * A1, m * d2).
 --
 -- Essentially, intervals form a free Abelian group G = {(n*e_1,m*e_2)
--- | n,m in Z} where e_1 = (1,0) and e_2 = (0,1) are two possible
+-- | (n,m) ∊ ℤ×ℤ} where e_1 = (1,0) and e_2 = (0,1) are two possible
 -- elements that can be used as a basis (generators for the group.
 -- An interval ratio is then defined as (A1)^n * (d2)^m.
 --
@@ -886,9 +881,6 @@ instance Duration AbstractDur3 where
 instance Duration d => Semigroup d where
   (<>) = combine
   
-
-  
-
 data Metronome = Metronome Int
 
 instance Show Metronome where
@@ -897,14 +889,17 @@ instance Show Metronome where
 instance Timing Metronome AbstractDur2 where
   time (Metronome n) (AbstractDur2 r) = AbstractDur3 (240000/(fromIntegral n) * (fromRational r))
 
-
 -- 60 bpm = 15 sbpm
 -- 1 sb = 60s/15 = 60s/(bpm/4) = 60000 ms/ (bpm/4)
 
+data Music n where
+  Start :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> Music (AbstractNote p i d)
+  Voices :: (Show p, Show i, Show d, Note p i d) => [AbstractPhrase (AbstractNote p i d)] -> Music (AbstractNote p i d)
+
+deriving instance Show (Music n)
 
 
-
-data AbstractPhrase n where -- a phrase tied to a particular type of note
+data AbstractPhrase n where -- a phrase tied to a particular type of note -- a *bit* like a rose tree datatype
   AbstractPhrase :: (Note p i d) => [AbstractNote p i d] -> AbstractPhrase (AbstractNote p i d)
 
 -- instance Functor AbstractPhrase where
@@ -916,7 +911,8 @@ sharpenAndDouble (AbstractInt p d) = AbstractInt (augment p) (combine d d)
 sharpenAndDouble (Conn (AbstractPhrase ns)) = Conn (AbstractPhrase (map sharpenAndDouble ns))
 
 mapPhrase :: (Note p i d, Note p' i' d')
-             => (AbstractNote p i d -> AbstractNote p' i' d') -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p' i' d')
+             => (AbstractNote p i d -> AbstractNote p' i' d')
+             -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p' i' d')
 mapPhrase f (AbstractPhrase ((Conn p):[])) = AbstractPhrase [Conn (mapPhrase f p)]
 mapPhrase f (AbstractPhrase (n:[])) = AbstractPhrase [f n]
 mapPhrase f (AbstractPhrase ((Conn p):ns)) = (AbstractPhrase [Conn (mapPhrase f p)]) <> (mapPhrase f (AbstractPhrase ns))
@@ -924,7 +920,8 @@ mapPhrase f (AbstractPhrase (n:ns)) = (AbstractPhrase [f n]) <> (mapPhrase f (Ab
 
 -- mapPhrase without recursion into sub-phrases
 mapPhraseSingle :: (Note p i d)
-             => (AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
+                   => (AbstractNote p i d -> AbstractNote p i d)
+                   -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
 mapPhraseSingle f (AbstractPhrase ((Conn p):[])) = AbstractPhrase [Conn (mapPhraseSingle f p)]
 mapPhraseSingle f (AbstractPhrase (n:[])) = AbstractPhrase [f n]
 mapPhraseSingle f (AbstractPhrase ((Conn p):ns)) = (AbstractPhrase [Conn p]) <> (mapPhraseSingle f (AbstractPhrase ns))
@@ -932,7 +929,9 @@ mapPhraseSingle f (AbstractPhrase (n:ns)) = (AbstractPhrase [f n]) <> (mapPhrase
 
 
 
-foldPhrase :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+foldPhrase :: Note p i d
+              => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d)
+              -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
 
 foldPhrase f (AbstractPhrase (n:[])) =
   case n of (Conn p) -> foldPhrase f p
@@ -950,9 +949,15 @@ isConn _ = False
 
 
 -- foldPhrase with *no* recursion into connected phrases -- they're simply ignored.
-foldPhraseSingle :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+foldPhraseSingle :: Note p i d
+                    => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d)
+                    -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+
 foldPhraseSingle f (AbstractPhrase p) = foldPhrase' f (AbstractPhrase (filter (not . isConn) p)) where
-  foldPhrase' :: Note p i d => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+  foldPhrase' :: Note p i d
+                 => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d)
+                 -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
+
   foldPhrase' f (AbstractPhrase (n:(Conn _):[])) = n
   foldPhrase' f (AbstractPhrase (n:(Directive _):[])) = n
   foldPhrase' f (AbstractPhrase (n:[])) = n
@@ -980,7 +985,8 @@ countDurs p = extractDur (countDurs' p) where
 -- split off and insert correct number of rests in front of new
 -- phrase. Repeat this procedure on all newly-discovered phrases,
 -- recursively.
-splitVoices :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> [AbstractPhrase (AbstractNote p i d)]
+splitVoices :: (Note p i d) =>
+               AbstractPhrase (AbstractNote p i d) -> [AbstractPhrase (AbstractNote p i d)]
 splitVoices (AbstractPhrase ns) =
   let before = takeWhile (not . isConn) ns
       after' = dropWhile (not . isConn) ns
@@ -998,7 +1004,8 @@ splitVoices (AbstractPhrase ns) =
 
 
 -- todo: rewrite absolute in a foldPhrase/countDurs style.
-absolute :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
+absolute :: (Note p i d) =>
+            AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
 absolute (AbstractPhrase (n:ns)) = AbstractPhrase (n:(absolute' n ns))
   where absolute' _ ((AbstractPitch p d):notes) = (AbstractPitch p d) : (absolute' (AbstractPitch p d) notes)
         absolute' base@(AbstractPitch p _) ((AbstractInt i d):notes) = (AbstractPitch (transpose i p) d) : (absolute' base notes)
@@ -1080,19 +1087,17 @@ repeatPhrase n p = p <> (repeatPhrase (n - 1) p)
 --            | Start Phrase -- just use this, then produce a tree structure.
 --            deriving Show
 
-data Music n where
-  Start :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> Music (AbstractNote p i d)
-  Voices :: (Show p, Show i, Show d, Note p i d) => [AbstractPhrase (AbstractNote p i d)] -> Music (AbstractNote p i d)
-
-deriving instance Show (Music n)
-
-
 explodeVoices :: (Note p i d) => Music (AbstractNote p i d) -> Music (AbstractNote p i d)
 explodeVoices (Start p) = Voices $ splitVoices p
 explodeVoices (Voices ps) = Voices $ concatMap splitVoices ps
 
 revVoices (Voices ps) = Voices $ reverse ps
 revVoices m = m
+
+noteToSound :: (Tuning t AbstractPitch2 AbstractInt2, Timing i AbstractDur2) => t -> i -> Note2 -> Note3
+noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
+noteToSound _ timing (Rest d) = Rest (time timing d)
+noteToSound _ timing (Directive d) = (Directive d)
 
 mapMusic :: (Note p i d, Note p' i' d')
              => (AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p' i' d')) -> Music (AbstractNote p i d) -> Music (AbstractNote p' i' d')

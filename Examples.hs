@@ -11,9 +11,10 @@ import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metro
               AbstractNote(..), Note1, Note2, Note3,
               AbstractPhrase(..),
               Degree(..), Ficta(..), noteToSound,
-              mapPhrase, absolute, normalise, faInt, faPitch)
+              mapPhrase, absolute, normalise, faInt, faPitch, Music(..), mapMusic)
 
 import Tuning
+import FiveLimit (PtolemyIntense(..))
 import Scales (minor, major, HarmonicMinor(..), Minor, Major,
                harmonicminor, infiniteScale, chromaticScale)
 import Shortcuts
@@ -58,7 +59,7 @@ et = Equal (pitch A Na, AbstractPitch3 440.0)
 
 q = QCMeanTone (pitch A Na, AbstractPitch3 440.0)
 
-m = Metronome 240
+me = Metronome 240
 
 -- tuning some scales:
 frequencies = map (tune et) (scale cmajor)
@@ -86,3 +87,11 @@ notes1 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale cmajor) notes) 
 
 notes2 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale (harmonicminor (pitch D Na))) notes) (repeat crotchet)
 
+
+cnotes1 = [g, a, b, c, c, c, b, c]
+cnotes2 = [e, f, d, e, d, e, d, e]
+cnotes3 = map (.-^ _P8) [c, f, gis, a, fis, g, g, c]
+
+chords = Voices $ map (\p -> phrase $ zipWith note p (repeat crotchet)) [cnotes1, cnotes2, cnotes3]
+
+chordsounds t = mapMusic (mapPhrase (noteToSound t me)) chords

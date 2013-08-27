@@ -65,6 +65,6 @@ playCsounds :: Music Note3 -> IO ExitCode
 playCsounds (Start phrase) = playCsounds $ explodeVoices (Start phrase)
 playCsounds (Voices phrases) = do writeFile "./csound-test.sco" $ csounds phrases;
                                   readProcess "csound" ["-d", "csound-test/organ.orc", "csound-test.sco"] "";
-                                  system "mplayer -volume 48 test.wav"
+                                  system "mplayer test.wav"
 
 

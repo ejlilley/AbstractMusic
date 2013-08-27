@@ -61,19 +61,24 @@ edo n = octave ^* (1/(fromIntegral n))
 -- Tunings based on EDO -- i.e. one generator for the whole scale, but
 -- utilising the representation of intervals as n*A1 + m*d2 (by some
 -- linear transformation) to number the resulting degrees of the
--- scale.
+-- scale (Rank 1 tuning systems)
 edoTune :: AbstractInt3 -> (Int, Int) -> AbstractInt2 -> AbstractInt3
 edoTune d (x, y) (AbstractInt2 q n) =
   let a ::+ b = faInt q n
   in (fromIntegral (x*a + y*b)) *^ d
 
 -- Tunings based on fixing the value of two intervals -- i.e. two
--- generators for the whole scale.
-pureTune :: AbstractInt3 -> AbstractInt3 -> AbstractInt2 -> AbstractInt3
-pureTune a1rat d2rat (AbstractInt2 q n) =
+-- generators for the whole scale (Rank 2 (syntonic) tuning systems)
+synTune :: AbstractInt3 -> AbstractInt3 -> AbstractInt2 -> AbstractInt3
+synTune a1rat d2rat (AbstractInt2 q n) =
   let a1 ::+ d2 = faInt q n
   in (a1rat ^* (fromIntegral a1)) ^+^ (d2rat ^* (fromIntegral d2))
 
+-- todo: need an equivalent of synTune for rank-3 tuning systems
+-- (5-limit) (and *maybe* an alternative to AbstractInt2 to represent
+-- e.g. major seconds of different sizes (cf. minor tone and major
+-- tone, though that might be automatically derivable from existing
+-- AbstractInt2/AbstractPitch2 values).
 
 makeBasis i (i1, r1) (i2, r2) = case (intervalDivisors i i1 i2) of
   Just (x, y) -> AbstractInt3 $ r1**(fromIntegral x) * r2**(fromIntegral y)
@@ -87,12 +92,12 @@ maked2 = makeBasis d2
 
 data Pythagorean = Pythagorean (AbstractPitch2, AbstractPitch3) deriving Show
 
-pythag_A1 = makeA1 (_P8, 2) (_P5, 3/2) -- is equal to comma^(-1), i.e. in negative direction
-pythag_d2 = maked2 (_P8, 2) (_P5, 3/2) -- chromatic semitone (is larger than m2, the diatonic semitone)
+pythag_A1 = makeA1 (_P8, 2) (_P5, 3/2) -- chromatic semitone (is larger than m2, the diatonic semitone)
+pythag_d2 = maked2 (_P8, 2) (_P5, 3/2) -- is equal to comma^(-1), i.e. in negative direction
 
 instance Tuning Pythagorean AbstractPitch2 AbstractInt2 where
   base (Pythagorean b) = b
-  tuneInt _ = pureTune pythag_A1 pythag_d2
+  tuneInt _ = synTune pythag_A1 pythag_d2
 
 
 data Equal = Equal (AbstractPitch2, AbstractPitch3) deriving Show
@@ -112,11 +117,11 @@ qcd2 = maked2 (_P8, 2) (_M3, 5/4) -- (diesis)
 -- ==> A1 = (1/4) * (M3 - 2*d2)
 -- And the resulting A1 & d2 are irrational.
 qcM3 = AbstractInt3 $ 5/4
-qcA1 = (1/4) *^ (qcM3 ^-^ (2 *^ qcd2))
+qcA1 = (1/4) *^ (qcM3 ^-^ (2 *^ qcd2)) -- note that A1 is now smaller than m2
 
 instance Tuning QCMeanTone AbstractPitch2 AbstractInt2 where
   base (QCMeanTone b) = b
-  tuneInt _ = pureTune qcA1 qcd2
+  tuneInt _ = synTune qcA1 qcd2
 
 
 
@@ -132,7 +137,7 @@ smtd2 = (1/7) *^ (octave ^-^ (12 *^ smtA1))
 
 instance Tuning SeptimalMeanTone AbstractPitch2 AbstractInt2 where
   base (SeptimalMeanTone b) = b
-  tuneInt _ = pureTune smtA1 smtd2
+  tuneInt _ = synTune smtA1 smtd2
 
 
 data TET19 = TET19 (AbstractPitch2, AbstractPitch3) deriving Show
