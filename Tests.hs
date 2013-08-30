@@ -62,7 +62,7 @@ pitchIntAdd a b = (a .+^ (b .-. a)) == b
 
 pitchDiffIsAntiSim = forAll pitches pitchAntiSim
 
-pitchDiffCorrect = forAll pitches pitchAntiSim
+pitchDiffCorrect = forAll pitches pitchIntAdd
 
 pitchTests = pitchDiffIsAntiSim .&&. pitchDiffCorrect
 
