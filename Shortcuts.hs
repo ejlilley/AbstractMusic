@@ -24,7 +24,6 @@ import Music (AbstractPitch2(..), AbstractInt2(..), AbstractDur2(..),
               AbstractNote(..), AbstractPhrase(..), Pitch(..), Interval(..),
               Transpose(..), Note(..), Duration(..), FreeAbelian(..),
               pitchToFa, intToFa)
-
 import Data.AdditiveGroup
 import Data.AffineSpace
 import Data.VectorSpace

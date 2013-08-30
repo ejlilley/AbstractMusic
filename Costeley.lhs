@@ -2,16 +2,34 @@
 {-#
 \end{code}
 
-# Guillaume Costeley's 19TET
+# Guillaume Costeley's 19-tone keyboard
 
-Audio file [here](costeley.ogg).
+One of the few pieces composed specifically for a keyboard with 19
+keys (it is keyboard music, despite being an arrangement of one of his
+own Chansons, and my [ropey Lilypond output](lily.html) which spreads it onto
+4+ staves).
 
-Rather crude score (Lilypond) [here](lily.html).
+There is a synthesised performance in [19-equal
+temperament](tet19.ogg) -- TET-19 allows for a distinction to be made
+between sharp and flat notes that would be enharmonically equivalent
+in TET-12.
 
-Note: obviously the input syntax is a bit shoddy...not least because it's
-all absolute pitches, not relative. Designing something radically
-different & better (e.g. parsing lilypond/PMX) would be a good
-idea.
+On a normal [12-equal temperament](tet12.ogg) keyboard, it would sound
+like [this](tet12.ogg), but note that a fair bit of the writing
+assumes that accidentals borrowed from other keys are tuned in such a
+way to make chords sound right in TET-19. No distinction between
+enharmonic accidentals is possible.
+
+In [TET-7](tet7.ogg) (which really exists) it would sound like this
+[this](tet7.ogg) -- accidentals cannot be represented at all in this
+tuning system.
+
+[TET-31](tet31.ogg) would allow for some number of double-sharps/flats
+(of which there aren't any in this piece, obviously), but the other
+changes to the sound are interesting too.
+
+Note: the input syntax below is Lilypond-esque, but all the pitches
+are absolute.
 
 ----------------
 
@@ -36,6 +54,10 @@ import Output
 import qualified Music.Lilypond as L
 import Lilypond
 import Tuning
+
+import FiveLimit (JustTuning(..), ForceJustTuning(..))
+
+
 \end{code}
 \begin{code}
 downNoctaves n = mapPhraseSingle (apTran ((-n) *^ octave))
@@ -747,7 +769,8 @@ v1b = phrase $
    note b s,
    note ais cr,
    note (gis∨) cr,
-   note ais s]
+   note ais s,
+   co v1c]
 
 v2b = downNoctaves 1 $ phrase $
   [Directive $ L.Clef L.Alto,
@@ -910,7 +933,7 @@ v3b = downNoctaves 2 $ phrase $
    note (ais∧) s,
    note (b∧) s,
    note gis s,
-   note gis (dotted br),
+   note fis (dotted br),
    note e s,
    note e s,
    note (b∧) s,
@@ -970,6 +993,9 @@ v3b = downNoctaves 2 $ phrase $
 
 v1c = phrase $
   [Directive $ L.Clef L.Treble,
+   co v2c,
+   co v3c,
+   co v4c,
    note a s,
    note (gis∨) s,
    note b s,
@@ -1084,7 +1110,335 @@ v1c = phrase $
    note (ges∨) m,
    note (gis∨) br]
 
+v2c = downNoctaves 1 $ phrase $
+  [Directive $ L.Clef L.Alto,
+   note fis s,
+   note eis s,
+   note fis s,
+   note gis m,
+   note fis m,
+   note eis br,
+   note (a∧) s,
+   note (a∧) m,
+   note gis m,
+   note fis m,
+   note fis m,
+   note eis s,
+   rest m,
+   note fis m,
+   note gis (dotted m),
+   note gis cr,
+   note gis m,
+   note fis m,
+   note eis s,
+   rest m,
+   note (a∧) m,
+   note (a∧) m,
+   note gis m,
+   note fis m,
+   note fis m,
+   note eis (dotted br),
+   rest m,
+   note cis m,
+   note fis m,
+   note fis m,
+   note eis (dotted m),
+   note dis cr,
+   note cis (dotted s),
+   note cis m,
+   note fis (dotted m),
+   note fis cr,
+   note eis m,
+   note eis m,
+   note dis m,
+   note dis m,
+   note fis m,
+   note fis m,
+   note fis m,
+   note eis m,
+   note dis s,
+   note des s,
+   note eis s,
+   note eis s,
+   note dis s,
+   note dis m,
+   note fis m,
+   note eis m,
+   note dis s,
+   note des m,
+   note dis m,
+   note fis m,
+   note cis m,
+   note cis m,
+   note b m,
+   note b m,
+   note ais cr,
+   note dis (dotted cr),
+   note cis q,
+   note b q,
+   note ais q,
+   note (gis∨) cr,
+   note b m,
+   note ais q,
+   note (gis∨) q,
+   note ais cr,
+   note dis (dotted cr),
+   note cis q,
+   note b q,
+   note cis q,
+   note dis q,
+   note eis q,
+   note fis cr,
+   note dis (dotted m),
+   note dis cr,
+   note b cr,
+   note cis cr,
+   note dis s,
+   note dis m,
+   note fis m,
+   note cis m,
+   note cis m,
+   note b m,
+   note b m,
+   note ais cr,
+   note dis (dotted cr),
+   note cis q,
+   note b q,
+   note ais q,
+   note (gis∨) cr,
+   note b m,
+   note ais q,
+   note (gis∨) q,
+   note ais cr,
+   note dis (dotted cr),
+   note cis q,
+   note b q,
+   note cis q,
+   note dis q,
+   note eis q,
+   note fis cr,
+   note dis (dotted m),
+   note dis cr,
+   note b cr,
+   note cis cr,
+   note dis s,
+   note bis br]
 
+
+v3c = downNoctaves 1 $ phrase $
+  [Directive $ L.Clef L.Alto,
+   note cis s,
+   note cis s,
+   note dis s,
+   note e m,
+   note cis m,
+   note cis br,
+   note e s,
+   note e m,
+   note e m,
+   note cis m,
+   note cis m,
+   note cis s,
+   rest m,
+   note cis m,
+   note e (dotted m),
+   note e cr,
+   note e m,
+   note cis m,
+   note cis s,
+   rest m,
+   note e m,
+   note e m,
+   note e m,
+   note cis m,
+   note cis m,
+   note cis s,
+   rest m,
+   note (gis∨) m,
+   note cis (dotted m),
+   note b cr,
+   note ais (dotted m),
+   note (gis∨) cr,
+   note (fis∨) m,
+   note (fis∨) m,
+   note cis (dotted m),
+   note b cr,
+   note ais m,
+   note (gis∨) m,
+   note (fis∨) cr,
+   note (gis∨) cr,
+   note ais s,
+   note (gis∨) cr,
+   note (fis∨) cr,
+   note (gis∨) m,
+   note ais m,
+   note b s,
+   note dis s,
+   note cis m,
+   note cis m,
+   note ais s,
+   note ais s,
+   rest m,
+   note ais m,
+   note cis (dotted m),
+   note b cr,
+   note (gis∨) m,
+   note (gis∨) m,
+   note b m,
+   note (fis∨) m,
+   note (gis∨) m,
+   note b m,
+   note ais s,
+   note (dis∨) m,
+   rest m,
+   note ais m,
+   note (eis∨) m,
+   note (gis∨) m,
+   note (dis∨) (dotted cr),
+   note (eis∨) q,
+   note (fis∨) (dotted cr),
+   note (gis∨) q,
+   note ais cr,
+   note (gis∨) q,
+   note ais q,
+   note b q,
+   note cis q,
+   note dis m,
+   note cis cr,
+   note dis m,
+   rest cr,
+   note dis m,
+   note cis m,
+   note b cr,
+   note ais m,
+   note gis m,
+   note ais s,
+   note (gis∨) cr,
+   note b m,
+   note ais cr,
+   note ais m,
+   note (eis∨) m,
+   note (gis∨) m,
+   note (dis∨) (dotted cr),
+   note (eis∨) q,
+   note (fis∨) (dotted cr),
+   note (gis∨) q,
+   note ais cr,
+   note (gis∨) q,
+   note ais q,
+   note b q,
+   note cis q,
+   note dis m,
+   note cis cr,
+   note dis m,
+   rest cr,
+   note dis m,
+   note cis m,
+   note b cr,
+   note ais m,
+   note (gis∨) m,
+   note ais s,
+   note (gis∨) br]
+
+v4c = downNoctaves 2 $ phrase $
+  [Directive $ L.Clef L.Bass,
+   note fis s,
+   note cis s,
+   note b s,
+   note e m,
+   note fis m,
+   note cis br,
+   note a s,
+   note a m,
+   note e m,
+   note fis m,
+   note fis m,
+   note cis s,
+   rest m,
+   note fis m,
+   note e (dotted m),
+   note e cr,
+   note e m,
+   note fis m,
+   note cis s,
+   rest m,
+   note a m,
+   note a m,
+   note e m,
+   note fis m,
+   note fis m,
+   note cis br,
+   rest m,
+   note cis m,
+   note fis (dotted m),
+   note eis cr,
+   note dis m,
+   note dis m,
+   note cis s,
+   rest m,
+   note cis m,
+   note fis (dotted m),
+   note eis cr,
+   note dis m,
+   note dis m,
+   note cis s,
+   note b s,
+   note b m,
+   note b m,
+   note fis m,
+   note cis m,
+   note dis s,
+   note ais br,
+   rest s,
+   rest br,
+   rest br,
+   rest m,
+   note dis m,
+   note ais m,
+   note cis m,
+   note (gis∨) (dotted cr),
+   note ais q,
+   note b (dotted cr),
+   note cis q,
+   note dis (dotted cr),
+   note eis q,
+   note fis cr,
+   note gis (dotted cr),
+   note fis q,
+   note e q,
+   note dis q,
+   note e m,
+   note dis m,
+   note gis m,
+   note fis m,
+   note gis m,
+   note dis m,
+   note e m,
+   note dis s,
+   note (gis∨) m,
+   note dis m,
+   note ais m,
+   note cis m,
+   note (gis∨) (dotted cr),
+   note ais q,
+   note b (dotted cr),
+   note cis q,
+   note dis (dotted cr),
+   note eis q,
+   note fis cr,
+   note gis (dotted cr),
+   note fis q,
+   note e q,
+   note dis q,
+   note e m,
+   note dis m,
+   note gis m,
+   note fis m,
+   note gis m,
+   note dis m,
+   note e m,
+   note dis s,
+   note (gis∨) br]
 
 
 
@@ -1099,7 +1453,7 @@ v1c = phrase $
 
 
 \begin{code}
--- tuning = Equal (a, freq 440)
+-- tuning = TET12 (a, freq 440)
 -- tuning = TET19 (a, freq 440)
 speed = Metronome 480
 

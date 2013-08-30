@@ -23,6 +23,7 @@
 module Tuning (Tuning(..),
                Pythagorean(..),
                Equal(..),
+               equal,
                QCMeanTone(..),
                SeptimalMeanTone(..),
                TET7(..),
@@ -100,10 +101,11 @@ instance Tuning Pythagorean AbstractPitch2 AbstractInt2 where
   tuneInt _ = synTune pythag_A1 pythag_d2
 
 
-data Equal = Equal (AbstractPitch2, AbstractPitch3) deriving Show
-type TET12 = Equal
-instance Tuning Equal AbstractPitch2 AbstractInt2 where
-  base (Equal b) = b
+data TET12 = TET12 (AbstractPitch2, AbstractPitch3) deriving Show
+type Equal = TET12
+equal = TET12
+instance Tuning TET12 AbstractPitch2 AbstractInt2 where
+  base (TET12 b) = b
   tuneInt _ = edoTune (edo 12) (1, 0)
 
 

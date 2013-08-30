@@ -35,3 +35,6 @@ nd r = (numerator r, denominator r)
 
 foldSG l = foldl1 (<>) l
 
+
+-- foldSG' f e (x:[]) = f x e
+-- foldSG' f e (x:xs) = f x (foldSG' f e xs)

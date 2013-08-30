@@ -18,10 +18,11 @@ import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metro
               AbstractPhrase(..),
               Degree(..), Ficta(..), noteToSound,
               mapPhrase, absolute, normalise, repeatPhrase, foldPhrase, countDurs,
-              explodeVoices, splitVoices, mapMusic,
+              explodeVoices, splitVoices, mapMusic, apPitch,
               Music(..))
 
 import Tuning
+import FiveLimit (JustTuning(..), JustPitch(..), JustInt(..), ForceJustTuning(..))
 import Scales (minor, major, harmonicminor, melodicminor, infiniteScale)
 import Shortcuts
 
@@ -54,8 +55,8 @@ p5notes = map (.-^ octave) $ map (\d -> AbstractPitch1 d Neutral)
            (DUp ME), (DUp ST), (DUp TO), LN, SM, DO, SD, ME, ST, SD, ME, ST]
 
 
--- key = major (pitch D Na)
-key = minor (a .+^ d3 .+^ d3)
+key = major (pitch C Na)
+-- key = minor (a .+^ d3 .+^ d3)
 
 bass = AbstractPhrase (zipWith AbstractPitch
                        (map ((transpose (int Perf ((Negative (Compound Unison))))) . (applyScale key)) bassnotes)
@@ -77,7 +78,7 @@ v4 = repeatPhrase 5 bass
 --et = Equal (a, freq 440)
 et = Pythagorean (a, freq 440)
 
-m = Metronome 120
+me = Metronome 120
 
 canon = Start v1
 

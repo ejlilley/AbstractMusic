@@ -11,10 +11,11 @@ import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metro
               AbstractNote(..), Note1, Note2, Note3,
               AbstractPhrase(..),
               Degree(..), Ficta(..), noteToSound,
+              apPitch,
               mapPhrase, absolute, normalise, faInt, faPitch, Music(..), mapMusic)
 
 import Tuning
-import FiveLimit (PtolemyIntense(..))
+import FiveLimit (JustTuning(..), JustPitch(..), JustInt(..), ForceJustTuning(..))
 import Scales (minor, major, HarmonicMinor(..), Minor, Major,
                harmonicminor, infiniteScale, chromaticScale)
 import Shortcuts
@@ -92,6 +93,11 @@ cnotes1 = [g, a, b, c, c, c, b, c]
 cnotes2 = [e, f, d, e, d, e, d, e]
 cnotes3 = map (.-^ _P8) [c, f, gis, a, fis, g, g, c]
 
-chords = Voices $ map (\p -> phrase $ zipWith note p (repeat crotchet)) [cnotes1, cnotes2, cnotes3]
+chords = Voices $ map (\p -> phrase $ zipWith note p (repeat minim)) [cnotes1, cnotes2, cnotes3]
 
 chordsounds t = mapMusic (mapPhrase (noteToSound t me)) chords
+
+
+cmajchord = Voices $ map (\n -> phrase [note n semibreve]) [c, e, g]
+
+
