@@ -102,5 +102,9 @@ fa3Tests = fa3PreservesIntervals .&&. fa3PreservesIntervals'
 
 -------- Putting it all together
 
-main = quickCheckResult (intervalTests .&&. pitchTests .&&. faTests .&&. individualTests)
+main = quickCheckResult (intervalTests .&&.
+                         pitchTests .&&.
+                         faTests .&&.
+                         fa3Tests .&&.
+                         individualTests)
 

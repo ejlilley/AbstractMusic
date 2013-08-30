@@ -23,7 +23,7 @@ import Music (AbstractPitch2(..), AbstractInt2(..), AbstractDur2(..),
               Name(..), Quality(..), Number(..), Accidental(..), Note2(..),
               AbstractNote(..), AbstractPhrase(..), Pitch(..), Interval(..),
               Transpose(..), Note(..), Duration(..), FreeAbelian(..),
-              pitchToFa, intToFa)
+              pitchToFa, intToFa, note, phrase, rest)
 import Data.AdditiveGroup
 import Data.AffineSpace
 import Data.VectorSpace
@@ -62,11 +62,6 @@ tie (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
 (!) 1 = 1
 (!) x = x * (!) (x - 1)
         
-phrase ns = AbstractPhrase ns
-note p d = AbstractPitch p d
-
-rest d = Rest d
-
 ---- note durations
 
 crotchet = rhythm 1 4

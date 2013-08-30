@@ -21,38 +21,23 @@ import Music (Number(..),
               AbstractDur2(..), Note(..),
               Interval(..), Transpose(..), Pitch(..),
               Name(..), Accidental(..),
-              countComp, countNeg, justNum)
+              countComp, countNeg, justNum, Music(..),
+              mapMusic, mapPhrase, noteToSound, Metronome(..))
+
+import Util (uniq)
+
+import Shortcuts (m, cr, q, a, b, c, d, e, f, g)
 
 import Data.AdditiveGroup
 import Data.AffineSpace
 import Data.VectorSpace
 
-import Scales (major, minor, infiniteScale)
+import Scales (major, minor, infiniteScale, chromaticScale)
 
 justTune :: AbstractInt3 -> AbstractInt3 -> AbstractInt3 -> JustInt -> AbstractInt3
 justTune ac1rat a1rat d2rat (JustInt qu nu) =
   let FA3 (m,n,p) = faIntJ qu nu
   in (ac1rat ^* (fromIntegral m)) ^+^ (a1rat ^* (fromIntegral n)) ^+^ (d2rat ^* (fromIntegral p))
-
-
--- data PtolemyIntense = PtolemyIntense (AbstractPitch2, AbstractPitch3)
--- 
--- instance Tuning PtolemyIntense AbstractPitch2 AbstractInt2 where
---   base (PtolemyIntense b) = b
---   tuneInt _ = undefined
---   tune t@(PtolemyIntense (b, f)) p
---     | (i < _P1) = (tune t (p .+^ _P8)) .-^ octave
---     | (i == _P1) = f
---     | (i == _M2) = f .+^ (AbstractInt3 $ 9/8)
---     | (i == _M3) = f .+^ (AbstractInt3 $ 5/4)
---     | (i == _P4) = f .+^ (AbstractInt3 $ 4/3)
---     | (i == _P5) = f .+^ (AbstractInt3 $ 3/2)
---     | (i == _M6) = f .+^ (AbstractInt3 $ 5/3)
---     | (i == _M7) = f .+^ (AbstractInt3 $ 15/8)
---     | (i == _P8) = f .+^ octave
---     | (i > _P8) = (tune t (p .-^ _P8)) .+^ octave
---     | otherwise = error "Can only use PtolemyIntense for diatonic major scales"
---       where i = p .-. b
 
 
 data FreeAbelian3 = FA3 (Int, Int, Int) deriving (Eq)
@@ -93,6 +78,11 @@ instance Ord JustPitch where
     (fromEnum n) `compare` (fromEnum m)
 
 -- data Width = Lesser | Classic | Greater | Acute | Grave | Wide | Semi deriving (Show, Eq)
+
+
+instance Note JustPitch JustInt AbstractDur2 where
+
+jp = JustPitch
 
 data JustQuality = Perf | Min | Maj | Lesser | Greater
                  | Acute JustQuality
@@ -137,7 +127,7 @@ instance AffineSpace JustPitch where
   (.+^) = flip transpose
 
 instance Transpose JustPitch JustInt where
-  transpose (JustInt q i) (JustPitch n a) = undefined
+  transpose (JustInt q i) (JustPitch k p) = toJP k $ (faJP k p) + (faIntJ q i)
   interval (JustPitch k p) (JustPitch k' p') = toIntJ $ (faJP k' p') - (faJP k p)
   normalise base diff n
     | diff < (JustInt Maj Seventh) = undefined
@@ -168,47 +158,24 @@ instance Interval JustInt where
 
 
 instance Pitch JustPitch where
-  sharpen (JustPitch k p) = undefined
-  flatten (JustPitch k p) = undefined
+  sharpen (JustPitch k p) = toJP k $ (faJP k p) + jA1
+  flatten (JustPitch k p) = toJP k $ (faJP k p) - jA1
   incr (JustPitch k (AbstractPitch2 n a)) = JustPitch k $ AbstractPitch2 (succ n) a
   decr (JustPitch k (AbstractPitch2 n a)) = JustPitch k $ AbstractPitch2 (pred n) a
   middle = JustPitch (AbstractPitch2 A Na) (AbstractPitch2 A Na)
-
-
 
 jAc1 = FA3 (1,0,0) -- just comma
 jA1 = FA3 (0,1,0) -- just augmented unison
 jd2 = FA3 (0,0,1) -- just diminished second
 
-jWA1 = jGM2 - jm2
-
--- Note, as far as we're concerned, WA(i) (wide augmented) == AcA(i) (acute augmented)
-
 jm2 = jd2 + jA1
-
--- dim(i) = i - A1
--- aug(i) = i + A1
--- acute(i) = i + c
--- grave(i) = i - c
-
-
-jAcm2 = jm2 + jAc1
-jdGM2 = jGM2 - jA1
--- jdGM2 = jAcm2
--- so, acute(m2) = dim(GM2)
-
-jGrM2 = jLM2 - jAc1
-
 jLM2 = jm2 + jA1
 jGM2 = jLM2 + jAc1
 
-jALM2 = jLM2 + jA1
-jAGM2 = jGM2 + jA1
-
 -- natural intervals can have either:
 -- Perf (1,4,5)
--- Min Lesser Greater (2) (??)
--- Min Maj (3,6,7) (??)
+-- Min Lesser Greater (2)
+-- Min Maj (3,6,7)
 
 faIntJ Perf Unison = FA3 (0,0,0)
 
@@ -328,8 +295,6 @@ faJP k@(AbstractPitch2 C Na) (AbstractPitch2 D Na)           = intJtoFa _L2
 faJP k@(AbstractPitch2 C Na) (AbstractPitch2 E (Fl Na))      = (faJP k (AbstractPitch2 D (Fl Na))) + (intJtoFa _G2)
 faJP k@(AbstractPitch2 C Na) (AbstractPitch2 E Na)           = (faJP k (AbstractPitch2 D Na)) + (intJtoFa _G2)
 faJP k@(AbstractPitch2 C Na) (AbstractPitch2 F Na)           = (faJP k (AbstractPitch2 E Na)) + (intJtoFa m2)
--- faJP k@(AbstractPitch2 C Na) (AbstractPitch2 F (Sh Na))      = 
--- faJP k@(AbstractPitch2 C Na) (AbstractPitch2 G (Fl Na))      = 
 faJP k@(AbstractPitch2 C Na) (AbstractPitch2 G Na)           = (faJP k (AbstractPitch2 F Na)) + (intJtoFa _G2)
 faJP k@(AbstractPitch2 C Na) (AbstractPitch2 (Up A) (Fl Na)) = (faJP k (AbstractPitch2 G Na)) + (intJtoFa m2)
 faJP k@(AbstractPitch2 C Na) (AbstractPitch2 (Up A) Na)      = (faJP k (AbstractPitch2 G Na)) + (intJtoFa _L2)
@@ -350,6 +315,43 @@ faJP k p = let i = p .-. k
 -- e.g. (faJP d g) - (faJP d d) == (faJP c f) - (faJP c c), i.e the P4
 -- between c and f, in c major, is the same as the P4 between d and g
 -- in d major (but not the same as the P4 between d and g in c major).
+
+
+oct m = m `div` 7
+
+fa3Norm (m,n,p) = (m - 3*(oct p), n - 12*(oct p), (p `mod` 7))
+
+toJP k (FA3 (m,n,p)) = JustPitch k $ AbstractPitch2 (toEnum (p + 2)) ((fa3ToAcc . fa3Norm) (m,n,p))
+
+-- This deliberately throws away comma (the 'm' in (m,n,p))
+-- information, and refuses to let you change key just by transposing
+-- by some weird (i.e. acute- or grave-) interval. Bad luck.
+
+fa3ToAcc (m,n,p)
+  | (n < 0) && (p == 0) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (0, 0) = Na
+  | (n > 0) && (p == 0) = Sh (fa3ToAcc (m, (n - 1), p))
+  | (n < 2) && (p == 1) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (2, 1) = Na
+  | (n > 2) && (p == 1) = Sh (fa3ToAcc (m, (n - 1), p))
+  | (n < 4) && (p == 2) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (4, 2) = Na
+  | (n > 4) && (p == 2) = Sh (fa3ToAcc (m, (n - 1), p))
+  | (n < 5) && (p == 3) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (5, 3) = Na
+  | (n > 5) && (p == 3) = Sh (fa3ToAcc (m, (n - 1), p))
+  | (n < 7) && (p == 4) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (7, 4) = Na
+  | (n > 7) && (p == 4) = Sh (fa3ToAcc (m, (n - 1), p))
+  | (n < 9) && (p == 5) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (9, 5) = Na
+  | (n > 9) && (p == 5) = Sh (fa3ToAcc (m, (n - 1), p))
+  | (n < 11) && (p == 6) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (11, 6) = Na
+  | (n > 11) && (p == 6) = Sh (fa3ToAcc (m, (n - 1), p))
+  | (n < 12) && (p == 7) = Fl (fa3ToAcc (m, (n + 1), p))
+  | (n, p) == (12, 7) = Na
+  | (n > 12) && (p == 7) = Sh (fa3ToAcc (m, (n - 1), p))
 
 
 int = JustInt
@@ -385,66 +387,6 @@ _P8 = int Perf (Compound Unison)
 _A8 = int (Aug Perf) (Compound Unison)
 
 
-pitch :: Name -> Accidental -> AbstractPitch2
-pitch n a = AbstractPitch2 n a
-
-sharp = Sh Na
-dsharp = Sh sharp
-flat = Fl Na
-dflat = Fl flat
-natural = Na
-
-aeses = pitch A dflat
-aes   = pitch A flat
-a     = pitch A natural
-ais   = pitch A sharp
-aisis = pitch A dsharp
-
-beses = pitch B dflat
-bes   = pitch B flat
-b     = pitch B natural
-bis   = pitch B sharp
-bisis = pitch B dsharp
-
-ceses = pitch C dflat  
-ces   = pitch C flat   
-c     = pitch C natural
-cis   = pitch C sharp  
-cisis = pitch C dsharp 
-
-deses = pitch D dflat  
-des   = pitch D flat   
-d     = pitch D natural
-dis   = pitch D sharp  
-disis = pitch D dsharp 
-
-eeses = pitch E dflat  
-ees   = pitch E flat   
-e     = pitch E natural
-eis   = pitch E sharp  
-eisis = pitch E dsharp 
-
-feses = pitch F dflat  
-fes   = pitch F flat   
-f     = pitch F natural
-fis   = pitch F sharp  
-fisis = pitch F dsharp 
-
-geses = pitch G dflat  
-ges   = pitch G flat   
-g     = pitch G natural
-gis   = pitch G sharp  
-gisis = pitch G dsharp 
-
-noteList = [aeses, aes, a, ais, aisis,
-            beses, bes, b, bis, bisis,
-            ceses, ces, c, cis, cisis,
-            deses, des, d, dis, disis,
-            eeses, ees, e, eis, eisis,
-            feses, fes, f, fis, fisis,
-            geses, ges, g, gis, gisis]
-
-
 -- m2 = 16/15
 rat_m2 = AbstractInt3 $ 16/15
 -- L2 = 10/9
@@ -470,17 +412,16 @@ data ForceJustTuning = ForceJustTuning (Key,AbstractPitch2,AbstractPitch3) deriv
 instance Tuning ForceJustTuning AbstractPitch2 AbstractInt2 where
   base (ForceJustTuning (k,b,f)) = (b,f)
   tune (ForceJustTuning (k,b,f)) p = tune (JustTuning (JustPitch k b,f)) (JustPitch k p)
---  tuneInt (ForceJustTuning (k,b,f)) i = tuneInt (JustTuning (JustPitch k b,f)) i
-  tuneInt (ForceJustTuning (k,b,f)) i = undefined
+  tuneInt t i = let (b, f) = base t
+                    b' = b .+^ i
+                in (tune t b') .-. (tune t b)
+
 
 t = JustTuning (JustPitch a a, AbstractPitch3 440)
 
+me = Metronome 240
 
+example = Start $ phrase $ zipWith note [jp c c, jp c d, jp c e, jp c f, jp c g] (repeat cr)
 
-
-
-
-instance Note JustPitch JustInt AbstractDur2 where
-
-
+perform = (mapMusic $ mapPhrase $ noteToSound t me) example
 

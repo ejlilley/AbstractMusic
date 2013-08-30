@@ -219,6 +219,14 @@ instance Show AbstractInt2 where
 ------------------
 
 class (Transpose p i, Duration d) => Note p i d where
+  phrase :: [AbstractNote p i d] -> AbstractPhrase (AbstractNote p i d)
+  phrase ns = AbstractPhrase ns
+  note :: p -> d -> AbstractNote p i d
+  note p d = AbstractPitch p d
+  rest :: d -> AbstractNote p i d
+  rest d = Rest d
+
+
 
 
 class (Pitch p, Interval i, AffineSpace p, VectorSpace i) => Transpose p i | p -> i, i -> p where
@@ -270,7 +278,6 @@ class Mensuration m where
 -- e.g. by giving it more complicated constructors.
 -- (see DummyTuning in Tuning.hs for a facetious example)
 
--- todo: make the output an (AbstractPitch3 Freq) rather than just a Freq.
 class (Transpose p i) => Tuning t p i | t -> p i where
   -- Important: implementation of either tune or tuneInt is required!
   base :: t -> (p, AbstractPitch3) -- e.g. (A Na, 440)

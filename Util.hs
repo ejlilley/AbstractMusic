@@ -38,3 +38,15 @@ foldSG l = foldl1 (<>) l
 
 -- foldSG' f e (x:[]) = f x e
 -- foldSG' f e (x:xs) = f x (foldSG' f e xs)
+
+uniq :: Eq a => [a] -> [a]
+uniq = reverse . (u [])
+  where u seen [] = seen
+        u seen (x:xs) = if x `foundIn` seen
+                        then u seen xs
+                        else u (x:seen) xs
+
+findWith eq c l = or $ map (eq c) l
+
+foundIn :: Eq a => a -> [a] -> Bool
+foundIn = findWith (==)
