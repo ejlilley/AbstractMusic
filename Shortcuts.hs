@@ -5,7 +5,7 @@
              FlexibleContexts #-}
 
 
-module Shortcuts (pitch, freq, int, rhythm, dotted, ddotted, tdotted, tie, phrase, note, rest,
+module Shortcuts (pitch, freq, rat, int, rhythm, dotted, ddotted, tdotted, tie, phrase, note, rest,
                   crotchet, minim, semibreve, breve, long, quaver, semiquaver, conn, co,
                   m, cr, br, s, q, sq,
                   demisemiquaver, hemidemisemiquaver,
@@ -37,6 +37,9 @@ pitch n a = AbstractPitch2 n a
 
 freq :: Double -> AbstractPitch3
 freq f = AbstractPitch3 f
+
+rat :: Double -> AbstractInt3
+rat f = AbstractInt3 f
 
 int :: Quality -> Number -> AbstractInt2
 int q n = AbstractInt2 q n

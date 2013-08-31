@@ -56,7 +56,7 @@ quavercmajscale = map (\n -> AbstractPitch n quaver) (scale cmajor)
 -- example tuning systems:
 p = Pythagorean (pitch A Na, AbstractPitch3 440.0)
 
-et = Equal (pitch A Na, AbstractPitch3 440.0)
+et = TET12 (pitch A Na, AbstractPitch3 440.0)
 
 q = QCMeanTone (pitch A Na, AbstractPitch3 440.0)
 

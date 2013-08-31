@@ -1,4 +1,4 @@
-module Algebra (intervalMod, intervalDiv, intervalDivisors) where
+module Algebra (intervalMod, intervalDiv, intervalDivisors, intervalDivisorsFrac) where
 
 import Music (intToFa, toInterval, Interval(..), FreeAbelian(..))
 import Shortcuts
@@ -46,3 +46,17 @@ intervalDivisors i j k
         q = (a*n - b*m)
         r = (d*m - c*n)
 -- e.g., intervalDivisors comma _P5 _P8 = Just (12,-7), as expected.
+
+-- todo: make a similar function for five-limit tuning (i.e. inverting a 3x3 matrix)
+
+intervalDivisorsFrac i j k
+  | (p == 0) = Nothing
+  -- | not $ p `divides` r = Nothing
+  -- | not $ p `divides` q = Nothing
+  | otherwise = Just (r / p, q / p)
+  where (m ::+ n) = intToFa i
+        (a ::+ b) = intToFa j
+        (c ::+ d) = intToFa k
+        p = fromIntegral $ (a*d - b*c)
+        q = fromIntegral $ (a*n - b*m)
+        r = fromIntegral $ (d*m - c*n)
