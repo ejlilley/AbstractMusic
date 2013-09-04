@@ -50,3 +50,5 @@ findWith eq c l = or $ map (eq c) l
 
 foundIn :: Eq a => a -> [a] -> Bool
 foundIn = findWith (==)
+
+under op f = \x y -> op (f x) (f y)

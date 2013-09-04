@@ -51,23 +51,24 @@ dminor = minor (pitch D Na)
 csharpminor = minor (pitch C (Sh Na))
 dsharpminor = harmonicminor (pitch D (Sh Na))
 
-quavercmajscale = map (\n -> AbstractPitch n quaver) (scale cmajor)
+longquavercmajscale = phrase $ zipWith note (take 22 $ infiniteScale cmajor) (repeat quaver)
+play_longquavercmajscale = playCsound $ mapPhrase (noteToSound et me) longquavercmajscale
 
 -- example tuning systems:
 p = Pythagorean (pitch A Na, AbstractPitch3 440.0)
 
 et = TET12 (pitch A Na, AbstractPitch3 440.0)
 
-q = QCMeanTone (pitch A Na, AbstractPitch3 440.0)
+qc = QCMeanTone (pitch A Na, AbstractPitch3 440.0)
 
 me = Metronome 240
 
 -- tuning some scales:
 frequencies = map (tune et) (scale cmajor)
-frequencies' = map (tune et) (scale csharpminor)
+frequencies' = map (tune qc) (scale csharpminor)
 
 
--- Play a tune
+---- Construct a tune from scale degrees
 
 notes = [AbstractPitch1 TO Neutral,
          AbstractPitch1 DO Neutral,
@@ -81,13 +82,13 @@ notes = [AbstractPitch1 TO Neutral,
          AbstractPitch1 ME Neutral,
          AbstractPitch1 ST Neutral,
          AbstractPitch1 TO Neutral]
-
 durs = [minim, minim, minim, minim, minim, crotchet, crotchet, tie minim quaver, quaver, quaver, quaver, crotchet]
 
 notes1 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale cmajor) notes) (repeat crotchet)
-
 notes2 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale (harmonicminor (pitch D Na))) notes) (repeat crotchet)
 
+
+---- Some simple polyphony
 
 cnotes1 = [g, a, b, c, c, c, b, c]
 cnotes2 = [e, f, d, e, d, e, d, e]
@@ -95,9 +96,8 @@ cnotes3 = map (.-^ _P8) [c, f, gis, a, fis, g, g, c]
 
 chords = Voices $ map (\p -> phrase $ zipWith note p (repeat minim)) [cnotes1, cnotes2, cnotes3]
 
-chordsounds t = mapMusic (mapPhrase (noteToSound t me)) chords
+-- note the arguments to noteToSound: 'et' is a tuning system, 'me' is a timing.
+chordsounds = mapMusic (mapPhrase (noteToSound et me)) chords
 
-
-cmajchord = Voices $ map (\n -> phrase [note n semibreve]) [c, e, g]
-
-
+-- and now to hear it through your speakers
+playchordsounds = playCsounds chordsounds

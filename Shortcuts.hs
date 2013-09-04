@@ -5,7 +5,7 @@
              FlexibleContexts #-}
 
 
-module Shortcuts (pitch, freq, rat, int, rhythm, dotted, ddotted, tdotted, tie, phrase, note, rest,
+module Shortcuts (pitch, freq, rat, int, rhythm, dotted, ddotted, tdotted, phrase, note, rest,
                   crotchet, minim, semibreve, breve, long, quaver, semiquaver, conn, co,
                   m, cr, br, s, q, sq,
                   demisemiquaver, hemidemisemiquaver,
@@ -54,17 +54,11 @@ dotted (AbstractDur2 r) = AbstractDur2 (r * (3%2))
 ddotted (AbstractDur2 r) = AbstractDur2 (r * (7%4))
 tdotted (AbstractDur2 r) = AbstractDur2 (r * (15%8))
 
-tie (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
-
 (∧) p = p .+^ octave
 (∧∧) p = p .+^ octave .+^ octave
 (∨) p = p .-^ octave
 (∨∨) p = p .-^ octave .-^ octave
 
-(!) :: Int -> Int
-(!) 1 = 1
-(!) x = x * (!) (x - 1)
-        
 ---- note durations
 
 crotchet = rhythm 1 4

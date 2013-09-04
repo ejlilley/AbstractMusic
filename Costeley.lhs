@@ -1454,7 +1454,7 @@ v4c = downNoctaves 2 $ phrase $
 
 \begin{code}
 -- tuning = TET12 (a, freq 440)
--- tuning = TET19 (a, freq 440)
+tuning = TET19 (a, freq 440)
 speed = Metronome 480
 
 music = Start v4
@@ -1462,8 +1462,13 @@ voices = revVoices $ explodeVoices music
 
 performance t = mapMusic (mapPhrase (noteToSound t speed)) voices
 
-play t = playCsounds (performance t)
 \end{code}
+
+To hear sounds, make sure you have Csound installed, then execute
+    the command: playCsounds (performance tuning)
+
+To get Lilypond output, execute the command:
+    writeLilypond "/tmp" $ lilypondFile voices
 
 
 

@@ -38,6 +38,7 @@ module Tuning (Tuning(..),
                TET31(..),
                TET54(..),
                TET72(..),
+               edo,
                DummyTuning(..)) where
 
 import Prelude hiding (negate)
@@ -213,6 +214,9 @@ data TET7 = TET7 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET7 AbstractPitch2 AbstractInt2 where
   base (TET7 b) = b
   tuneInt _ = edoTune (edo 7) (0, 1)
+-- this is equivalent to setting A1 = 1, i.e. using
+-- ArbitrarySyntonic (_P8, rat $ 2) (_A1, rat $ 1) (a, freq 440)
+
 
 -- data TET17 -- todo: implement the arabic system of notation/scales,
 -- then use TET17 as its tuning system.

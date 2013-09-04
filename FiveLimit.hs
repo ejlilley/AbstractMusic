@@ -24,7 +24,7 @@ import Music (Number(..),
               countComp, countNeg, justNum, Music(..),
               mapMusic, mapPhrase, noteToSound, Metronome(..))
 
-import Util (uniq)
+import Util (uniq, under)
 
 import Shortcuts (m, cr, q, a, b, c, d, e, f, g)
 
@@ -59,13 +59,18 @@ instance Show FreeAbelian3 where
 
 type Key = AbstractPitch2
 
-data JustPitch = JustPitch Key AbstractPitch2 deriving (Eq)
+data JustPitch = JustPitch Key AbstractPitch2
+
+instance Eq JustPitch where
+  (==) = (==) `under` jpToFa
 
 instance Show JustPitch where
   show (JustPitch k p) = "[" ++ (show p) ++ " in " ++ (show k) ++ "]"
 
--- data JustInt = JustInt Key AbstractInt2 deriving (Show, Eq)
-data JustInt = JustInt JustQuality Number deriving (Eq)
+data JustInt = JustInt JustQuality Number
+
+instance Eq JustInt where
+  (==) = (==) `under` intJtoFa
 
 instance Show JustInt where
   show (JustInt q n) = (show q) ++ (show n)
@@ -76,8 +81,6 @@ instance Ord JustInt where
 instance Ord JustPitch where
   (JustPitch _ (AbstractPitch2 n _)) `compare` (JustPitch _ (AbstractPitch2 m _)) =
     (fromEnum n) `compare` (fromEnum m)
-
--- data Width = Lesser | Classic | Greater | Acute | Grave | Wide | Semi deriving (Show, Eq)
 
 
 instance Note JustPitch JustInt AbstractDur2 where
@@ -107,8 +110,8 @@ instance Show JustQuality where
 --   show (Aug Min) = "A"
 --   show (Aug Greater) = "A"
 --   show (Aug Lesser) = "A"
-  show (Aug q) = "A" ++ (show q)
-  show (Dim q) = "d" ++ (show q)
+  show (Aug q) = 'A':(show q)
+  show (Dim q) = 'd':(show q)
   show (Acute q) = "Ac" ++ (show q)
   show (Grave q) = "Gr" ++ (show q)
 
@@ -316,6 +319,7 @@ faJP k p = let i = p .-. k
 -- between c and f, in c major, is the same as the P4 between d and g
 -- in d major (but not the same as the P4 between d and g in c major).
 
+jpToFa (JustPitch k p) = faJP k p
 
 oct m = m `div` 7
 
