@@ -52,3 +52,5 @@ foundIn :: Eq a => a -> [a] -> Bool
 foundIn = findWith (==)
 
 under op f = \x y -> op (f x) (f y)
+
+x `divides` y = (y `div` x)*x == y

@@ -25,9 +25,10 @@ module Tuning (Tuning(..),
                Equal(..),
                equal,
                QCMeanTone(..),
-               SeptimalMeanTone(..),
-               Schismatic(..),
-               PureFifthsThirds(..),
+               SCMeanTone(..),
+               septimal,
+               schismatic,
+               kleismic,
                ArbitrarySyntonic(..),
                TET7(..),
                TET12(..),
@@ -51,7 +52,8 @@ import Music (Name(..), Accidental(..),
               AbstractPitch2(..), AbstractInt2(..), AbstractDur2(..),
               AbstractNote(..), Note, Tuning(..), Transpose(..),
               Freq, add, sub, invert, negate, transpose, interval, octave,
-              faInt, faPitch, FreeAbelian(..), intToFa, pitchToFa, toInterval, toPitch)
+              faInt, faPitch, FreeAbelian(..), intToFa, pitchToFa, toInterval,
+              toPitch, cent)
 
 import Algebra
 import Shortcuts
@@ -60,6 +62,12 @@ import Shortcuts
 -- return an equal division of the octave
 edo :: Int -> AbstractInt3
 edo n = octave ^* (1/(fromIntegral n))
+
+cents :: AbstractInt3 -> Double
+cents (AbstractInt3 f) = (log f) / (log cent)
+
+-- An example of how to find (x,y) values for EDO tunings
+findEdo d = filter (\(x,y) -> 12*x + 7*y == d) [(x,y) | x <- [-10..10], y <- [-10..10]]
 
 -- Generic function for EDO tunings -- i.e. one generator for the
 -- whole scale, but utilising the representation of intervals as n*A1
@@ -121,57 +129,62 @@ instance Tuning DummyTuning AbstractPitch2 AbstractInt2 where
 
 data Pythagorean = Pythagorean (AbstractPitch2, AbstractPitch3) deriving Show
 
-pythag_A1 = makeA1 (_P8, rat 2) (_P5, rat $ 3/2) -- chromatic semitone (is larger than m2, the diatonic semitone)
-pythag_d2 = maked2 (_P8, rat 2) (_P5, rat $ 3/2) -- is equal to comma^(-1), i.e. in negative direction
+pyA1 = makeA1 (_P8, rat 2) (_P5, rat $ 3/2) -- chromatic semitone (is larger than m2, the diatonic semitone)
+pyd2 = maked2 (_P8, rat 2) (_P5, rat $ 3/2) -- is equal to comma^(-1), i.e. in negative direction
 
 instance Tuning Pythagorean AbstractPitch2 AbstractInt2 where
   base (Pythagorean b) = b
-  tuneInt _ = synTune pythag_A1 pythag_d2
+  tuneInt _ = synTune pyA1 pyd2
 
 
+-- Quarter-comma meantone
 data QCMeanTone = QCMeanTone (AbstractPitch2, AbstractPitch3) deriving Show
-
 -- we know that M3 = 5/4
-
 qcd2 = maked2 (_P8, rat 2) (_M3, rat $ 5/4) -- (diesis)
 qcA1 = makeA1 (_P8, rat 2) (_M3, rat $ 5/4)
-
 instance Tuning QCMeanTone AbstractPitch2 AbstractInt2 where
   base (QCMeanTone b) = b
   tuneInt _ = synTune qcA1 qcd2
 
+-- Sixth-comma meantone
+data SCMeanTone = SCMeanTone (AbstractPitch2, AbstractPitch3) deriving Show
+-- we know that A4 = 45/32
+scd2 = maked2 (_P8, rat 2) (_A4, rat $ 45/32)
+scA1 = makeA1 (_P8, rat 2) (_A4, rat $ 45/32)
+instance Tuning SCMeanTone AbstractPitch2 AbstractInt2 where
+  base (SCMeanTone b) = b
+  tuneInt _ = synTune scA1 scd2
 
-data SeptimalMeanTone = SeptimalMeanTone (AbstractPitch2, AbstractPitch3)
-                      deriving Show
-
--- We know that A6 = 7/4
-smtA1 = makeA1 (_P8, rat 2) (_A6, rat $ 7/4)
-smtd2 = maked2 (_P8, rat 2) (_A6, rat $ 7/4)
-
-instance Tuning SeptimalMeanTone AbstractPitch2 AbstractInt2 where
-  base (SeptimalMeanTone b) = b
-  tuneInt _ = synTune smtA1 smtd2
-
-data Schismatic = Schismatic (AbstractPitch2, AbstractPitch3) deriving Show
-
--- We know that 8*P4 = 10
-schA1 = makeA1 (_P8, rat 2) (8 *^ _P4, rat 10)
-schd2 = maked2 (_P8, rat 2) (8 *^ _P4, rat 10)
-
-instance Tuning Schismatic AbstractPitch2 AbstractInt2 where
-  base (Schismatic b) = b
-  tuneInt _ = synTune schA1 schd2
+-- Third-comma meantone
+data TCMeanTone = TCMeanTone (AbstractPitch2, AbstractPitch3) deriving Show
+-- we know that m3 = 6/5
+tcd2 = maked2 (_P8, rat 2) (m3, rat $ 6/5)
+tcA1 = makeA1 (_P8, rat 2) (m3, rat $ 6/5)
+instance Tuning TCMeanTone AbstractPitch2 AbstractInt2 where
+  base (TCMeanTone b) = b
+  tuneInt _ = synTune tcA1 tcd2
 
 
+-- I'll write the rest of the meantone tunings in condensed form
 
+pureoctave = ArbitrarySyntonic (_P8, rat 2)
 
-data PureFifthsThirds = PureFifthsThirds (AbstractPitch2, AbstractPitch3) deriving Show
--- pure fifths and thirds, but not octaves(!!)
-instance Tuning PureFifthsThirds AbstractPitch2 AbstractInt2 where
-  base (PureFifthsThirds b) = b
-  tuneInt _ = synTune
-              (makeA1 (_P5, rat $ 3/2) (_M3, rat $ 5/4))
-              (maked2 (_P5, rat $ 3/2) (_M3, rat $ 5/4))
+septimal    = pureoctave (_A6,      rat $ 7/4)
+schismatic  = pureoctave (8 *^ _P4, rat $ 10)
+kleismic    = pureoctave (6 *^ m3,  rat $ 3)
+augmented   = pureoctave (3 *^ _M3, rat $ 2)
+pelogic     = pureoctave (4 *^ _P5, rat $ 24/5)
+wuerschmidt = pureoctave (8 *^ _M3, rat $ 6)
+dimipent    = pureoctave (4 *^ m3,  rat $ 2)
+dicot       = pureoctave (_A1,      rat $ 1) -- i.e. TET7
+tetracot    = pureoctave (_A5,      rat $ 3/2)
+sycamore    = pureoctave (5 *^ _A1, rat $ 6/5)
+escapade    = pureoctave (9 *^ _M3, rat $ 16384 / 2187)
+vishnuzmic  = pureoctave (7 *^ _A1, rat $ 4/3)
+inverted    = pureoctave (_P5,      rat $ 4/3) -- swap fourths and fifths
+
+pureFifthsThirds = ArbitrarySyntonic (_P5, rat $ 3/2) (_M3, rat $ 5/4) -- pure fifths and thirds, but not octaves(!)
+
 
 data ArbitrarySyntonic = ArbitrarySyntonic
                          (AbstractInt2, AbstractInt3)
@@ -192,23 +205,6 @@ instance Tuning ArbitrarySyntonic AbstractPitch2 AbstractInt2 where
 -- in common usage (but see Costeley.lhs for an interesting 19-TET
 -- example).
 
-data TET12 = TET12 (AbstractPitch2, AbstractPitch3) deriving Show
-type Equal = TET12
-equal = TET12
-instance Tuning TET12 AbstractPitch2 AbstractInt2 where
-  base (TET12 b) = b
-  tuneInt _ = edoTune (edo 12) (1, 0)
-
--- Note that you can get 12-TET by tempering out the Pythagorean comma, i.e.:
--- TET12 (a, freq 440) == ArbitrarySyntonic (_P8, rat 2) (comma, rat 1) (a, freq 440)
--- where comma = unison ^-^ d2
-
-
-data TET19 = TET19 (AbstractPitch2, AbstractPitch3) deriving Show
-instance Tuning TET19 AbstractPitch2 AbstractInt2 where
-  base (TET19 b) = b
-  tuneInt _ = edoTune (edo 19) (1, 1)
-
 
 data TET7 = TET7 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET7 AbstractPitch2 AbstractInt2 where
@@ -218,12 +214,33 @@ instance Tuning TET7 AbstractPitch2 AbstractInt2 where
 -- ArbitrarySyntonic (_P8, rat $ 2) (_A1, rat $ 1) (a, freq 440)
 
 
+-- TET12 is an excellent approximation to Pythagorean tuning, and is
+-- also very good overall at harmonic-matching. It's *not* as close to
+-- Just intonation as many of the Meantone temperaments, however.
+type Equal = TET12
+equal = TET12
+data TET12 = TET12 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET12 AbstractPitch2 AbstractInt2 where
+  base (TET12 b) = b
+  tuneInt _ = edoTune (edo 12) (1, 0)
+-- Note that you can get 12-TET by tempering out the Pythagorean comma, i.e.:
+-- TET12 (a, freq 440) == ArbitrarySyntonic (_P8, rat 2) (comma, rat 1) (a, freq 440)
+-- where comma = unison ^-^ d2
+
+
+
 -- data TET17 -- todo: implement the arabic system of notation/scales,
 -- then use TET17 as its tuning system.
 data TET17 = TET17 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET17 AbstractPitch2 AbstractInt2 where
   base (TET17 b) = b
   tuneInt _ = edoTune (edo 17) (2, -1)
+
+data TET19 = TET19 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET19 AbstractPitch2 AbstractInt2 where
+  base (TET19 b) = b
+  tuneInt _ = edoTune (edo 19) (1, 1)
+
 
 -- data Indian22 -- todo: implement the Indian system of notation/scales,
 -- then use this as its tuning system.
@@ -247,9 +264,16 @@ instance Tuning TET31 AbstractPitch2 AbstractInt2 where
   tuneInt _ = edoTune (edo 31) (2, 1)
 
 
+data TET34 = TET34 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET34 AbstractPitch2 AbstractInt2 where
+  base (TET34 b) = b
+  tuneInt _ = edoTune (edo 34) (4, -2)
 
--- fixme: the current choices of (x,y) for TET54 and TET72 are
--- obviously nonsense!
+data TET41 = TET41 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET41 AbstractPitch2 AbstractInt2 where
+  base (TET41 b) = b
+  tuneInt _ = edoTune (edo 41) (4, -1)
+
 
 data TET54 = TET54 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET54 AbstractPitch2 AbstractInt2 where
@@ -262,14 +286,17 @@ instance Tuning TET72 AbstractPitch2 AbstractInt2 where
   base (TET72 b) = b
   tuneInt _ = edoTune (edo 72) (6, 0)
 
+data TET94 = TET94 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET94 AbstractPitch2 AbstractInt2 where
+  base (TET94 b) = b
+  tuneInt _ = edoTune (edo 94) (9, -2)
+--  tuneInt _ = edoTune (edo 94) (2, 10)
 
--- Zarlino's Just scale uses: makeBasis i (m3, 6/5) (_M3, 5/4)
+
+data TET118 = TET118 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET118 AbstractPitch2 AbstractInt2 where
+  base (TET118 b) = b
+  tuneInt _ = edoTune (edo 118) (4, 10)
 
 
 
--- data Ptolemy
---
--- data Just3Limit
--- 
--- data Just5Limit
--- 

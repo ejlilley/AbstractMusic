@@ -42,7 +42,7 @@ import qualified Music.Lilypond as L
 
 import Util (interleave, iterateM,
              compose, member, intersection,
-             remove, nd, foldSG, under)
+             remove, nd, foldSG, under, divides)
 
 
 
@@ -181,7 +181,6 @@ instance Bounded Freq where
   -- (limits of human hearing)
   minBound = 20
   maxBound = 20e3
-  -- intended to help tuning procedures know when to switch direction.
 
 instance Show AbstractPitch3 where
   show (AbstractPitch3 f) = showFreq f
@@ -493,7 +492,7 @@ instance Eq AbstractPitch2 where
 
 
 cent :: FreqRat
-cent = (2 ** (1/12)) / 100
+cent = (2 ** (1/1200))
 
 instance Pitch AbstractPitch3 where
   sharpen (AbstractPitch3 f) = AbstractPitch3 (f * (1 + 50*cent))
@@ -534,19 +533,18 @@ instance (Interval i) => AdditiveGroup i where
 --      | (s > 0) = i ^+^ ((s - 1) *^ i)
 --      | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
 
+intervalPowerPositive 0 i = zeroV
+intervalPowerPositive s i
+  | (s > 0) = i ^+^ ((s - 1) *^ i)
+  | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
+
 instance VectorSpace AbstractInt1 where
   type Scalar AbstractInt1 = Int
-  (*^) 0 i = zeroV
-  (*^) s i
-    | (s > 0) = i ^+^ ((s - 1) *^ i)
-    | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
+  (*^) = intervalPowerPositive
 
 instance VectorSpace AbstractInt2 where
   type Scalar AbstractInt2 = Int
-  (*^) 0 i = zeroV
-  (*^) s i
-    | (s > 0) = i ^+^ ((s - 1) *^ i)
-    | (s < 0) = (negateV i) ^+^ ((s + 1) *^ i)
+  (*^) = intervalPowerPositive
 
 instance VectorSpace AbstractInt3 where
   type Scalar AbstractInt3 = Double

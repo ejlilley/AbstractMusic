@@ -1,6 +1,11 @@
 module Algebra (intervalMod, intervalDiv, intervalDivisors, intervalDivisorsFrac) where
 
-import Music (intToFa, toInterval, Interval(..), FreeAbelian(..))
+import Music (intToFa, toInterval, Interval(..), FreeAbelian(..), intervalPowerPositive)
+import Data.AdditiveGroup
+import Data.AffineSpace
+import Data.VectorSpace
+import Data.Semigroup hiding (Min)
+import Util (divides)
 import Shortcuts
 
 intervalMod i di
@@ -31,8 +36,6 @@ intervalDiv i di
       | (i ^+^ di) > unison = 0
       | otherwise = 1 + (intervalDiv (i ^+^ di) di)
 
-x `divides` y = (y `div` x)*x == y
-
 -- we want x,y where i = x*j + y*k
 intervalDivisors i j k
   | (p == 0) = Nothing
@@ -60,3 +63,15 @@ intervalDivisorsFrac i j k
         p = fromIntegral $ (a*d - b*c)
         q = fromIntegral $ (a*n - b*m)
         r = fromIntegral $ (d*m - c*n)
+
+
+
+-- Can handle negative powers, if they exist.
+intervalPower k i
+  | (k >= 0) = Just $ intervalPowerPositive k i
+  | not $ k' `divides` m = Nothing
+  | not $ k' `divides` n = Nothing
+  | otherwise = Just $ toInterval ( (m `div` k') ::+ (n `div` k') )
+  where (m ::+ n) = intToFa i
+        k' = -k
+
