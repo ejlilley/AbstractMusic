@@ -6,6 +6,7 @@
              FunctionalDependencies,
              FlexibleContexts,
              RankNTypes,
+             ImpredicativeTypes,
              OverlappingInstances,
              TypeSynonymInstances,
              ScopedTypeVariables,
@@ -42,7 +43,8 @@ import qualified Music.Lilypond as L
 
 import Util (interleave, iterateM,
              compose, member, intersection,
-             remove, nd, foldSG, under, divides)
+             remove, nd, foldSG, under, divides,
+             listDiff)
 
 
 
@@ -104,8 +106,14 @@ data AbstractNote p i d where
   AbstractInt :: (Note p i d, Show i, Show d) => i -> d -> (AbstractNote p i d)
   Rest :: (Duration d, Show d) => d -> (AbstractNote p i d)
   Conn :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
+--  ConnInt :: (Show p, Show i, Show d, Note p i d) => i -> AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
   Directive :: L.Music -> AbstractNote p i d
 
+deriving instance Eq (AbstractNote p i d)
+
+coerceNote :: (Note p i d, Note p' i' d') => AbstractNote p i d -> AbstractNote p' i' d'
+coerceNote (Directive d) = Directive d
+coerceNote n = error $ "Don't know how to coerce " ++ (show n)
 
 -- Note: we *could* make Conn look like this:
 --     Conn :: (Note p i d, Note p' i' d') => AbstractPhrase (AbstractNote p' i' d') -> (AbstractNote p i d)
@@ -120,6 +128,8 @@ data AbstractNote p i d where
 data AbstractPhrase n where
   AbstractPhrase :: (Note p i d) => [AbstractNote p i d] -> AbstractPhrase (AbstractNote p i d)
 
+deriving instance Eq (AbstractPhrase n)
+
 
 -- A collection of phrases ('Voices') forms a piece of music -- or,
 -- alternatively, one single phrase ('Start') starts the whole piece
@@ -128,12 +138,27 @@ data AbstractPhrase n where
 data Music n where
   Start :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> Music (AbstractNote p i d)
   Voices :: (Show p, Show i, Show d, Note p i d) => [AbstractPhrase (AbstractNote p i d)] -> Music (AbstractNote p i d)
+
 deriving instance Show (Music n)
+
+-- Ignore the order of voices when comparing music values
+instance Eq (Music n) where
+    (Voices vs) == (Voices vs') = null $ vs `listDiff` vs'
+    (Voices vs) == p@(Start _) = null $ vs `listDiff` (voiceList $ explodeVoices p)
+    p@(Start _) == vs@(Voices _) = vs == p
+    p@(Start _) == p'@(Start _) = (explodeVoices p) == (explodeVoices p')
+
+voiceList :: (Note p i d, n ~ AbstractNote p i d) => Music n -> [AbstractPhrase n]
+voiceList (Voices v) = v
+
 
 -------- Type instances of the above types for Ord, Eq, Show etc.
 
 instance Ord AbstractInt1 where
   compare = compare `under` (\(AbstractInt1 s _) -> fromEnum s)
+
+instance Ord AbstractPitch1 where
+  compare = compare `under` (\(AbstractPitch1 d _) -> fromEnum d)
 
 instance Ord AbstractInt2 where
   compare = compare `under` (\(AbstractInt2 _ n) -> fromEnum n)
@@ -143,6 +168,9 @@ instance Ord AbstractPitch2 where
 
 instance Ord AbstractInt3 where
   compare = compare `under` (\(AbstractInt3 f) -> f)
+
+instance Ord AbstractPitch3 where
+  compare = compare `under` (\(AbstractPitch3 f) -> f)
 
 instance Show AbstractPitch1 where
   show (AbstractPitch1 d f) = (show d) ++ (show f)
@@ -245,7 +273,7 @@ class (Pitch p, Interval i, AffineSpace p, VectorSpace i) => Transpose p i | p -
   normalise :: p -> i -> p -> p
   normalise _ _ _ = undefined
 
-class (Show p, Eq p, AffineSpace p) => Pitch p where
+class (Show p, Eq p, Ord p, AffineSpace p) => Pitch p where
   incr :: p -> p
   decr :: p -> p
   sharpen :: p -> p
@@ -276,6 +304,7 @@ class (Semigroup d, Show d, Eq d) => Duration d where
   combine :: d -> d -> d
   tie :: d -> d -> d
   tie = combine
+  unit :: d
 
 
 class Mensuration m where
@@ -296,9 +325,20 @@ class (Transpose p i) => Tuning t p i | t -> p i where
   tune :: t -> p -> AbstractPitch3
   tune t p' = let (p, r) = base t
               in r .+^ (tuneInt t (interval p p'))
+  tuneNote :: Note p i d => t -> AbstractNote p i d -> AbstractNote AbstractPitch3 AbstractInt3 d
+  tuneNote t (AbstractPitch p d) = AbstractPitch (tune t p) d
+  tuneNote t (AbstractInt i d) = AbstractInt (tuneInt t i) d
+  tuneNote _ (Rest d) = Rest d
+  tuneNote _ d = coerceNote d
 
 class (Duration d) => Timing t d | t -> d where
   time :: t -> d -> AbstractDur3
+  timeNote :: Note p i d => t -> AbstractNote p i d -> AbstractNote p i AbstractDur3
+  timeNote t (AbstractPitch p d) = AbstractPitch p (time t d)
+  timeNote t (AbstractInt i d) = AbstractInt i (time t d)
+  timeNote t (Rest d) = Rest (time t d)
+  timeNote _ d = coerceNote d
+
 -- Any way of specifying a concrete realisation of tempo -- some magic
 -- involving the IO monad may allow for accelerations etc.
 
@@ -443,6 +483,7 @@ instance Show Note2 where
   show (AbstractInt i d) = "{" ++ (show i) ++ " " ++ (showNote d) ++ "}"
   show (Rest d) = "{" ++ (showRest d) ++ "}"
   show (Conn c) = "{" ++ (show c) ++ "}"
+--  show (ConnInt i c) = "{" ++ (show i) ++ "|" ++ (show c) ++ "}"
   show (Directive c) = "{" ++ (show c) ++ "}"
 
 instance Show (AbstractNote p i d) where
@@ -450,19 +491,16 @@ instance Show (AbstractNote p i d) where
   show (AbstractInt i d) = "Interval{" ++ (show i) ++ " " ++ (show d) ++ "}"
   show (Rest d) = "Rest{" ++ (show d) ++ "}"
   show (Conn c) = "{" ++ (show c) ++ "}"
+--  show (ConnInt i c) = "{" ++ (show i) ++ "|" ++ (show c) ++ "}"
   show (Directive c) = "{" ++ (show c) ++ "}"
 
 
 ------------------------------------
 -- Instances of classes defined above.
 
-instance Note AbstractPitch1 AbstractInt1 AbstractDur1 where
+instance (Transpose p i, Duration d) => Note p i d where
 
-instance Note AbstractPitch1 AbstractInt1 AbstractDur2 where
-
-instance Note AbstractPitch2 AbstractInt2 AbstractDur2 where
-
-instance Note AbstractPitch3 AbstractInt3 AbstractDur3 where
+-- instance (Transpose p i, Pitch p, Interval i, Duration d) => Note p i d where
 
 -- instance Note Figuring AbstractInt1 AbstractDur2 where
 
@@ -581,10 +619,9 @@ data FreeAbelian = Int ::+ Int deriving (Show, Eq)
 -- Note that, in Pythagorean tuning, d2 is comma^(-1) (in negative
 -- direction), and m2 + comma = A1 (i.e. m2 < A1).
 --
--- Could use P8 & P5 as generators, or m2 & d2, or whatever really.
---
--- Todo: use signed multiset instead? Probably overkill, even though
--- that's technically what free Abelian groups "are".
+-- Could use P8 & P5 as generators, or m2 & d2, or any pair of
+-- linearly independent intervals (linear independence is preserved
+-- across basis changes).
 
 instance Ord FreeAbelian where
   (_ ::+ a) <= (_ ::+ b) = a <= b
@@ -597,8 +634,8 @@ instance Num FreeAbelian where
   (a ::+ b) - (c ::+ d) = (a - c) ::+ (b - d)
   (a ::+ b) * (c ::+ d) = (a*c - b*d) ::+ (b*c + a*d) -- maybe...
   fromInteger n = (fromIntegral n) ::+ 0
-  abs (a ::+ b) = undefined -- (cannot give the absolute magnitude of a group element until we know what tuning system we're using)
-  signum (a ::+ b) = undefined
+  abs (a ::+ b) = (abs a) ::+ (abs b) -- (cannot give the absolute magnitude of a group element until we know what tuning system we're using)
+  signum (a ::+ b) = (signum a) ::+ (signum b)
 
 faInt :: Quality -> Number -> FreeAbelian
 -- i.e. intervals as elements of the free Abelian group
@@ -812,14 +849,17 @@ instance Transpose AbstractPitch3 AbstractInt3 where
 
 
 instance Duration AbstractDur1 where
+  unit = AbstractDur1 Br
   combine (AbstractDur1 a) (AbstractDur1 b) = AbstractDur1 $ Tie a b
 
 instance Duration AbstractDur2 where
+  unit = AbstractDur2 (1 % 1)
   combine (AbstractDur2 (nd -> (0, _))) _ = error "no zero durations!"
   combine _ (AbstractDur2 (nd -> (0, _))) = error "no zero durations!"
   combine (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
 
 instance Duration AbstractDur3 where
+  unit = AbstractDur3 1
   combine (AbstractDur3 0) _ = error "no zero durations!"
   combine _ (AbstractDur3 0) = error "no zero durations!"
   combine (AbstractDur3 t) (AbstractDur3 r) = AbstractDur3 (t + r)
@@ -918,6 +958,10 @@ extractDur (AbstractInt _ d) = d
 extractDur (Rest d) = d
 extractDur p = error ("Trying to extract duration from value with no duration: " ++ (show p))
 
+extractPitch :: (Note p i d) => (AbstractNote p i d) => p
+extractPitch (AbstractPitch p _) = p
+extractPitch p = error ("Trying to extract duration from value with no duration: " ++ (show p))
+
 
 countDurs :: Note p i d => AbstractPhrase (AbstractNote p i d) -> d
 countDurs p = extractDur (countDurs' p) where
@@ -945,12 +989,21 @@ splitVoices (AbstractPhrase ns) =
 
 
 
+
 -- todo: rewrite absolute in a foldPhrase/countDurs style.
 absolute :: (Note p i d) =>
             AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
-absolute (AbstractPhrase (n:ns)) = AbstractPhrase (n:(absolute' n ns))
-  where absolute' _ ((AbstractPitch p d):notes) = (AbstractPitch p d) : (absolute' (AbstractPitch p d) notes)
-        absolute' base@(AbstractPitch p _) ((AbstractInt i d):notes) = (AbstractPitch (transpose i p) d) : (absolute' base notes)
+absolute (AbstractPhrase ns) = AbstractPhrase (absolute' n ns)
+  where firstPitch ((AbstractPitch p d):ns) = AbstractPitch p d
+        firstPitch ((AbstractInt _ _):ns) = error "Cannot make phrase absolute if it has relative pitches before absolute pitches."
+        firstPitch (_:ns) = firstPitch ns
+        n = firstPitch ns
+        absolute' _ ((AbstractPitch p d):notes) = (AbstractPitch p d) : (absolute' (AbstractPitch p d) notes)
+        absolute' base@(AbstractPitch p _) ((AbstractInt i d):notes) = (AbstractPitch (transpose i p) d) : (absolute' (AbstractPitch (transpose i p) d) notes)
+        absolute' base ((Conn (AbstractPhrase p)):notes) = let remaining = absolute' base notes
+                                                               base' = firstPitch remaining
+                                                               connected = (Conn (AbstractPhrase (absolute' base' p)))
+                                                           in connected : remaining
         absolute' base (p:notes) = p : (absolute' base notes)
         absolute' _ [] = []
 
@@ -1006,10 +1059,13 @@ revVoices m = m
 
 -- Apply a tuning system and a timing to a note, simultaneously. Use
 -- with mapPhrase to turn AbstractNote2s into AbstractNote3s.
+----noteToSound :: (Note p i d, Tuning t p i, Timing t' d) => t -> t' -> AbstractNote p i d -> Note3
+----noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
+----noteToSound _ timing (Rest d) = Rest (time timing d)
+----noteToSound _ timing (Directive d) = (Directive d)
 noteToSound :: (Note p i d, Tuning t p i, Timing t' d) => t -> t' -> AbstractNote p i d -> Note3
-noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
-noteToSound _ timing (Rest d) = Rest (time timing d)
-noteToSound _ timing (Directive d) = (Directive d)
+noteToSound tu ti = (timeNote ti) . (tuneNote tu)
+
 
 mapMusic :: (Note p i d, Note p' i' d')
              => (AbstractPhrase (AbstractNote p i d) ->
@@ -1018,6 +1074,13 @@ mapMusic :: (Note p i d, Note p' i' d')
 -- Apply a function to all phrases in a piece of music.
 mapMusic f (Start p) = Start $ f p
 mapMusic f (Voices ps) = Voices $ map f ps
+
+
+instance (Note p i d) => Semigroup (Music (AbstractNote p i d)) where
+  (Voices v) <> (Voices v') = Voices (v ++ v')
+  (Voices v) <> (Start p) = (Voices v) <> (explodeVoices (Start p))
+  (Start p) <> (Voices v) = (explodeVoices (Start p)) <> (Voices v)
+  (Start p) <> (Start p') = Start $ (phrase [(Conn p')]) <> p
 
 
 

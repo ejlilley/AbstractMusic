@@ -7,6 +7,7 @@ module Util where
 import Control.Monad
 import Data.Ratio
 import Data.Semigroup
+import Data.List
 
 interleave (x:xs) (y:ys) = [x, y] ++ (interleave xs ys)
 
@@ -54,3 +55,17 @@ foundIn = findWith (==)
 under op f = \x y -> op (f x) (f y)
 
 x `divides` y = (y `div` x)*x == y
+
+pairSortKey :: (Int, Int) -> Int
+-- pairSortKey (x, y) = (abs x) + (abs y)
+pairSortKey (x, y) = abs (x*y)
+
+sortUnder f = sortBy (compare `under` f)
+
+sortPairs = sortUnder pairSortKey
+
+
+listDiff [] [] = []
+listDiff a [] = a
+listDiff [] a = a
+listDiff (a:as) b = listDiff as (delete a b)
