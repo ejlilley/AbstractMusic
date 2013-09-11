@@ -30,6 +30,7 @@ module Tuning (Tuning(..),
                schismatic,
                kleismic,
                ArbitrarySyntonic(..),
+               TET5(..),
                TET7(..),
                TET12(..),
                TET17(..),
@@ -37,14 +38,14 @@ module Tuning (Tuning(..),
                TET22(..),
                TET24(..),
                TET31(..),
-               TET54(..),
+               TET53(..),
                TET72(..),
                edo,
                DummyTuning(..)) where
 
 import Prelude hiding (negate)
 
-import Util (interleave)
+import Util (sortUnder, sortPairs)
 
 import Music (Name(..), Accidental(..),
               Quality(..), Number(..),
@@ -65,9 +66,6 @@ edo n = octave ^* (1/(fromIntegral n))
 
 cents :: AbstractInt3 -> Double
 cents (AbstractInt3 f) = (log f) / (log cent)
-
--- An example of how to find (x,y) values for EDO tunings
-findEdo d = filter (\(x,y) -> 12*x + 7*y == d) [(x,y) | x <- [-10..10], y <- [-10..10]]
 
 -- Generic function for EDO tunings -- i.e. one generator for the
 -- whole scale, but utilising the representation of intervals as n*A1
@@ -135,6 +133,8 @@ pyd2 = maked2 (_P8, rat 2) (_P5, rat $ 3/2) -- is equal to comma^(-1), i.e. in n
 instance Tuning Pythagorean AbstractPitch2 AbstractInt2 where
   base (Pythagorean b) = b
   tuneInt _ = synTune pyA1 pyd2
+-- Note, the Pythagorean d4 and A2 are fairly close to the just M3 and
+-- m3, respectively (and see schismatic below).
 
 
 -- Quarter-comma meantone
@@ -170,7 +170,7 @@ instance Tuning TCMeanTone AbstractPitch2 AbstractInt2 where
 pureoctave = ArbitrarySyntonic (_P8, rat 2)
 
 septimal    = pureoctave (_A6,      rat $ 7/4)
-schismatic  = pureoctave (8 *^ _P4, rat $ 10)
+schismatic  = pureoctave (8 *^ _P4, rat $ 10) -- gives you just major thirds as the interval d4, and just minor thirds as A2.
 kleismic    = pureoctave (6 *^ m3,  rat $ 3)
 augmented   = pureoctave (3 *^ _M3, rat $ 2)
 pelogic     = pureoctave (4 *^ _P5, rat $ 24/5)
@@ -182,6 +182,12 @@ sycamore    = pureoctave (5 *^ _A1, rat $ 6/5)
 escapade    = pureoctave (9 *^ _M3, rat $ 16384 / 2187)
 vishnuzmic  = pureoctave (7 *^ _A1, rat $ 4/3)
 inverted    = pureoctave (_P5,      rat $ 4/3) -- swap fourths and fifths
+synTET12    = pureoctave (d2,       rat $ 1) -- precisely equivalent to TET12
+
+-- Any tuning involving setting an interval to 1 ("tempering" it out)
+-- is a projection to a rank-1 tuning -- essentially what the function
+-- genericEdo below is doing is automatically determining the interval
+-- to temper out.
 
 pureFifthsThirds = ArbitrarySyntonic (_P5, rat $ 3/2) (_M3, rat $ 5/4) -- pure fifths and thirds, but not octaves(!)
 
@@ -204,6 +210,12 @@ instance Tuning ArbitrarySyntonic AbstractPitch2 AbstractInt2 where
 -- keyboards with n different keys -- hence 12-TET being the only one
 -- in common usage (but see Costeley.lhs for an interesting 19-TET
 -- example).
+
+
+data TET5 = TET5 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET5 AbstractPitch2 AbstractInt2 where
+  base (TET5 b) = b
+  tuneInt _ = edoTune (edo 5) (1, -1)
 
 
 data TET7 = TET7 (AbstractPitch2, AbstractPitch3) deriving Show
@@ -237,10 +249,10 @@ instance Tuning TET17 AbstractPitch2 AbstractInt2 where
   tuneInt _ = edoTune (edo 17) (2, -1)
 
 data TET19 = TET19 (AbstractPitch2, AbstractPitch3) deriving Show
+  -- The first good edo for matching M3 as well as P5
 instance Tuning TET19 AbstractPitch2 AbstractInt2 where
   base (TET19 b) = b
   tuneInt _ = edoTune (edo 19) (1, 1)
-
 
 -- data Indian22 -- todo: implement the Indian system of notation/scales,
 -- then use this as its tuning system.
@@ -262,6 +274,7 @@ data TET31 = TET31 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET31 AbstractPitch2 AbstractInt2 where
   base (TET31 b) = b
   tuneInt _ = edoTune (edo 31) (2, 1)
+  -- 31-tet is the most efficient edo at matching both M3 and P5
 
 
 data TET34 = TET34 (AbstractPitch2, AbstractPitch3) deriving Show
@@ -274,11 +287,10 @@ instance Tuning TET41 AbstractPitch2 AbstractInt2 where
   base (TET41 b) = b
   tuneInt _ = edoTune (edo 41) (4, -1)
 
-
-data TET54 = TET54 (AbstractPitch2, AbstractPitch3) deriving Show
-instance Tuning TET54 AbstractPitch2 AbstractInt2 where
-  base (TET54 b) = b
-  tuneInt _ = edoTune (edo 54) (1, 6)
+data TET53 = TET53 (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning TET53 AbstractPitch2 AbstractInt2 where
+  base (TET53 b) = b
+  tuneInt _ = edoTune (edo 53) (5, -1)
 
 -- TET12 divided by 6:
 data TET72 = TET72 (AbstractPitch2, AbstractPitch3) deriving Show
@@ -296,7 +308,38 @@ instance Tuning TET94 AbstractPitch2 AbstractInt2 where
 data TET118 = TET118 (AbstractPitch2, AbstractPitch3) deriving Show
 instance Tuning TET118 AbstractPitch2 AbstractInt2 where
   base (TET118 b) = b
-  tuneInt _ = edoTune (edo 118) (4, 10)
+  tuneInt _ = edoTune (edo 118) (11, -2)
 
 
+---- EDO helper functions:
 
+-- An example of how to find (x,y) values for EDO tunings
+findEdo d = sortPairs $ filter (\(x,y) -> 12*x + 7*y == d) [(x,y) | x <- [-100..100], y <- [-100..100]]
+
+deriveEdo d = case findEdo d of
+  p:ps -> p
+  [] -> error $ "No edo solutions for " ++ (show d)
+
+genericEdo d = edoTune (edo d) (deriveEdo d)
+
+edoSearch n i = sortUnder snd $ map (\x -> (x, (flip genericEdo) i $ x)) [0..n]
+-- search for a good edo for matching M3 with: edoSearch _M3
+
+-- Not guaranteed to pick the best mapping of pitches onto the edo scale:
+data ArbitraryTET = ArbitraryTET Int (AbstractPitch2, AbstractPitch3) deriving Show
+instance Tuning ArbitraryTET AbstractPitch2 AbstractInt2 where
+  base (ArbitraryTET d b) = b
+  tuneInt (ArbitraryTET d b) = genericEdo d
+
+-- The procedure for mapping intervals to note-numbering in each
+-- particular EDO is suited to finding good approximations to
+-- Pythagorean tuning.  This is sub-optimal for tunings (such as
+-- 53-TET) which are also capable of simultaneously matching two just
+-- intervals well e.g. the 5/4 just major third as well as a perfect
+-- fifth. For 53-TET, you could just be happy spelling your just major
+-- thirds as diminished fourths.
+
+
+tet106 = ArbitraryTET 106 -- next best for matching P5 = 3/2
+tet174 = ArbitraryTET 174 -- next best for matching M3 = 5/4, also matches P5 well
+tet62 = ArbitraryTET 62 -- good for matching both P5 and M3
