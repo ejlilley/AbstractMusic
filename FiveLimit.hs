@@ -83,8 +83,6 @@ instance Ord JustPitch where
     (fromEnum n) `compare` (fromEnum m)
 
 
-instance Note JustPitch JustInt AbstractDur2 where
-
 jp = JustPitch
 
 data JustQuality = Perf | Min | Maj | Lesser | Greater

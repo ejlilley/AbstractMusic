@@ -54,6 +54,7 @@ import Output
 import qualified Music.Lilypond as L
 import Lilypond
 import Tuning
+import Analysis
 
 import FiveLimit (JustTuning(..), ForceJustTuning(..))
 
@@ -1454,10 +1455,12 @@ v4c = downNoctaves 2 $ phrase $
 
 \begin{code}
 -- tuning = TET12 (a, freq 440)
-tuning = TET19 (a, freq 440)
+tuning = synTET19 (a, freq 440)
 speed = Metronome 480
 
 music = Start v4
+
+-- Change the order in which the parts appear in the score (still not ideal)
 voices = revVoices $ explodeVoices music
 
 performance t = mapMusic (mapPhrase (noteToSound t speed)) voices

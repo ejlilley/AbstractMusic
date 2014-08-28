@@ -282,7 +282,7 @@ cantus = downNoctaves 1 $ phrase $
    
 
 
-tuning = TET12 (a, freq 440)
+tuning = equal (a, freq 440)
 speed = Metronome 480
 
 music = Voices [cantus, altus, tenor, bassus]

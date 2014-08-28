@@ -11,13 +11,14 @@ import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metro
               AbstractNote(..), Note1, Note2, Note3,
               AbstractPhrase(..),
               Degree(..), Ficta(..), noteToSound,
-              apPitch,
+              apPitch, chord,
               mapPhrase, absolute, normalise, faInt, faPitch, Music(..), mapMusic)
 
 import Tuning
 import FiveLimit (JustTuning(..), JustPitch(..), JustInt(..), ForceJustTuning(..))
 import Scales (minor, major, HarmonicMinor(..), Minor, Major,
                harmonicminor, infiniteScale, chromaticScale)
+import Util (allPairs, interleave)
 import Shortcuts
 import Lilypond
 import Output
@@ -43,7 +44,6 @@ somelength = AbstractDur3 4.56
 n4 :: Note3
 n4 = AbstractPitch somefreq somelength
 
-
 -- example scales:
 cmajor = major (pitch C Na)
 bflatmajor = major (pitch B (Fl Na))
@@ -55,11 +55,11 @@ longquavercmajscale = phrase $ zipWith note (take 22 $ infiniteScale cmajor) (re
 play_longquavercmajscale = playCsound $ mapPhrase (noteToSound et me) longquavercmajscale
 
 -- example tuning systems:
-p = Pythagorean (pitch A Na, AbstractPitch3 440.0)
+p = pythagorean (pitch A Na, AbstractPitch3 440.0)
 
-et = TET12 (pitch A Na, AbstractPitch3 440.0)
+et = equal (pitch A Na, AbstractPitch3 440.0)
 
-qc = QCMeanTone (pitch A Na, AbstractPitch3 440.0)
+qc = qcmeantone (pitch A Na, AbstractPitch3 440.0)
 
 me = Metronome 240
 
@@ -68,7 +68,7 @@ frequencies = map (tune et) (scale cmajor)
 frequencies' = map (tune qc) (scale csharpminor)
 
 
----- Construct a tune from scale degrees
+---- Construct a tune from scale degrees (this is pretty unwieldy)
 
 notes = [AbstractPitch1 TO Neutral,
          AbstractPitch1 DO Neutral,
@@ -84,8 +84,8 @@ notes = [AbstractPitch1 TO Neutral,
          AbstractPitch1 TO Neutral]
 durs = [minim, minim, minim, minim, minim, crotchet, crotchet, tie minim quaver, quaver, quaver, quaver, crotchet]
 
-notes1 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale cmajor) notes) (repeat crotchet)
-notes2 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale (harmonicminor (pitch D Na))) notes) (repeat crotchet)
+notes1 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale cmajor) notes) durs
+notes2 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale (harmonicminor (pitch D Na))) notes) durs
 
 
 ---- Some simple polyphony
@@ -101,3 +101,11 @@ chordsounds = mapMusic (mapPhrase (noteToSound et me)) chords
 
 -- and now to hear it through your speakers
 playchordsounds = playCsounds chordsounds
+
+----------------
+
+pos = [0..]
+neg = map (*(-1)) [1..]
+ints = interleave pos neg
+pairs = allPairs ints ints
+intervals = map (\(a,d) -> a *^ _A1 ^+^ d *^ d2) pairs

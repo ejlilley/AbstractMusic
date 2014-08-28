@@ -39,11 +39,13 @@ phraseToList (AbstractPhrase ns) = ns
 
 csound :: AbstractPhrase Note3 -> String
 csound notes = csoundHeader ++ "\n" ++ csoundPhrase 0 notes'
-  where notes' = phraseToList $ absolute notes
+--  where notes' = phraseToList $ absolute notes -- absolute is currently buggy
+  where notes' = phraseToList notes
 
 csounds :: [AbstractPhrase Note3] -> String
 csounds notes = csoundHeader ++ "\n" ++ foldl (++) "" (map (csoundPhrase 0) notes')
-  where notes' = map (phraseToList . absolute) notes
+--  where notes' = map (phraseToList . absolute) notes -- absolute is currently buggy
+  where notes' = map phraseToList notes
 
 
 csoundPhrase _ [] = ""

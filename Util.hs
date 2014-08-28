@@ -10,6 +10,8 @@ import Data.Semigroup
 import Data.List
 
 interleave (x:xs) (y:ys) = [x, y] ++ (interleave xs ys)
+interleave [] ys = ys
+interleave ys [] = ys
 
 log2 x = (log x) / (log 2)
 
@@ -25,7 +27,9 @@ member xs  x = (not . null . (filter (==x))) xs
 intersection xs = filter (member xs)
 remove xs ys = filter (\y -> not (member xs y)) ys
 
+rotate [] = []
 rotate (x:xs) = xs ++ [x]
+
 rotateN 0 = id
 rotateN n = rotate . (rotateN (n - 1))
 
@@ -69,3 +73,16 @@ listDiff [] [] = []
 listDiff a [] = a
 listDiff [] a = a
 listDiff (a:as) b = listDiff as (delete a b)
+
+
+-- Cartesian product of two infinite lists, that is guaranteed to list
+-- all pairs (eventually)
+allPairs :: [a] -> [b] -> [(a, b)]
+allPairs _ [] = []
+allPairs [] _ = []
+allPairs (a:as) (b:bs) = 
+   (a, b) : ([(a, b) | b <- bs] `merge` 
+             [(a, b) | a <- as] `merge` 
+             allPairs as bs)
+  where merge (x:xs) l = x : merge l xs
+        merge []     l = l
