@@ -1,4 +1,5 @@
-{-# LANGUAGE EmptyDataDecls, 
+{-# LANGUAGE OverlappingInstances,
+             EmptyDataDecls, 
              OverloadedStrings,
              MultiParamTypeClasses, 
              UndecidableInstances, 
@@ -7,7 +8,6 @@
              FunctionalDependencies,
              FlexibleContexts,
              RankNTypes,
-             OverlappingInstances,
              TypeSynonymInstances,
              ScopedTypeVariables,
              UnicodeSyntax,
@@ -32,7 +32,7 @@ import Shortcuts
 import Data.Ratio
 import Data.Char
 
-import qualified Music.Lilypond as L
+import qualified Data.Music.Lilypond as L
 import Text.Pretty hiding (int)
 
 import System.IO
@@ -101,13 +101,23 @@ splitRest (Rest d) =
 
 header = vcat ["\\version \"2.15.36\""]
 
-layout = vcat $ [ "\\layout {",
-                  "    \\override Staff.BarLine #'transparent = ##t",
-                  "    \\context { \\Staff \\RemoveEmptyStaves }",
-                  "}"]
+layout = vcat $ ["\\layout {",
+-- "    \\override Staff.BarLine #'transparent = ##t",
+                 "  \\context {",
+                 "    \\Staff",
+                 "    \\RemoveEmptyStaves",
+                 "  }",
+                 "  \\context {",
+                 "    \\Voice",
+                 "    \\remove \"Note_heads_engraver\"",
+                 "    \\remove \"Rest_engraver\"",
+                 "    \\consists \"Completion_heads_engraver\"",
+                 "    \\consists \"Completion_rest_engraver\"",
+                 "  }",
+                 "}"]
 
-snippet s = vcat $ ["\\clef alto",
-                    "\\time 4/2",
+snippet s = vcat $ [-- "\\clef alto",
+                    -- "\\time 4/2",
                     s]
 
 lilypondFile m = vcat [header, layout, (snippet (lilypond m))]

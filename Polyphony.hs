@@ -61,13 +61,13 @@ stackCadences (Cadence c1) (Cadence c2) = Cadence $ \p d ->
   let c1' = c1 p d
       top = topPitch c1'
       c2' = c2 top d
-  in case c1' <> c2' of Voices v -> Voices $ uniq v
+  in c1' <> c2'
 
 superimposeCadences :: (Note p i d, n ~ AbstractNote p i d) => Cadence n -> Cadence n -> Cadence n
 superimposeCadences (Cadence c1) (Cadence c2) = Cadence $ \p d ->
   let c1' = c1 p d
       c2' = c2 p d
-  in case c1' <> c2' of Voices v -> Voices $ uniq v
+  in c1' <> c2'
 
 makeFourNoteCadence :: (Note p i d, n ~ AbstractNote p i d) => (i,i,i) -> Cadence n
 makeFourNoteCadence (i1,i2,i3) = Cadence $ \p d ->

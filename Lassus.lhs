@@ -26,16 +26,17 @@ import Music (mapPhraseSingle, apPitch, apDur, apTran, apInt,
 
 import Shortcuts
 import Output
-import qualified Music.Lilypond as L
+import qualified Data.Music.Lilypond as L
 import Lilypond
 import Tuning
 
-import FiveLimit (JustTuning(..), ForceJustTuning(..))
+-- import FiveLimit (JustTuning(..), ForceJustTuning(..))
 
 downNoctaves n = mapPhraseSingle (apTran ((-n) *^ octave))
 
 bassus = downNoctaves 2 $ phrase $
-  [Directive $ L.Clef L.Bass,
+  [rest s,
+   Directive $ L.Clef L.Bass,
    rest s,
    note c (dotted s),
    note (g∨) m,
@@ -96,7 +97,8 @@ bassus = downNoctaves 2 $ phrase $
 
 
 tenor = downNoctaves 1 $ phrase $
-  [Directive $ L.Clef L.Tenor,
+  [rest s,
+   Directive $ L.Clef L.Tenor,
    note (g∨) (dotted s),
    note (g∨) m,
    note (g∨) br,
@@ -161,7 +163,8 @@ tenor = downNoctaves 1 $ phrase $
    
 
 altus = downNoctaves 1 $ phrase $
-  [Directive $ L.Clef L.Alto,
+  [rest s,
+   Directive $ L.Clef L.Alto,
    rest s,
    note c (dotted s),
    note b m,
@@ -220,7 +223,8 @@ altus = downNoctaves 1 $ phrase $
    note b s]
    
 cantus = downNoctaves 1 $ phrase $
-  [Directive $ L.Clef L.Treble,
+  [rest s,
+   Directive $ L.Clef L.Treble,
    rest s,
    note e (dotted s),
    note d m,

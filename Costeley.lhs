@@ -51,9 +51,10 @@ import Music (mapPhraseSingle, apPitch, apDur, apTran, apInt,
 
 import Shortcuts
 import Output
-import qualified Music.Lilypond as L
+import qualified Data.Music.Lilypond as L
 import Lilypond
 import Tuning
+import Analysis
 
 import FiveLimit (JustTuning(..), ForceJustTuning(..))
 
@@ -1458,6 +1459,8 @@ tuning = TET19 (a, freq 440)
 speed = Metronome 480
 
 music = Start v4
+
+-- Change the order in which the parts appear in the score (still not ideal)
 voices = revVoices $ explodeVoices music
 
 performance t = mapMusic (mapPhrase (noteToSound t speed)) voices

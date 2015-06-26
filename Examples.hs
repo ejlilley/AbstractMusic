@@ -11,7 +11,7 @@ import Music (Name(..), Accidental(..), Scale(..), Tuning(..), Timing(..), Metro
               AbstractNote(..), Note1, Note2, Note3,
               AbstractPhrase(..),
               Degree(..), Ficta(..), noteToSound,
-              apPitch,
+              apPitch, chord,
               mapPhrase, absolute, normalise, faInt, faPitch, Music(..), mapMusic)
 
 import Tuning
@@ -43,7 +43,6 @@ somelength = AbstractDur3 4.56
 n4 :: Note3
 n4 = AbstractPitch somefreq somelength
 
-
 -- example scales:
 cmajor = major (pitch C Na)
 bflatmajor = major (pitch B (Fl Na))
@@ -68,7 +67,7 @@ frequencies = map (tune et) (scale cmajor)
 frequencies' = map (tune qc) (scale csharpminor)
 
 
----- Construct a tune from scale degrees
+---- Construct a tune from scale degrees (this is pretty unwieldy)
 
 notes = [AbstractPitch1 TO Neutral,
          AbstractPitch1 DO Neutral,
@@ -84,8 +83,8 @@ notes = [AbstractPitch1 TO Neutral,
          AbstractPitch1 TO Neutral]
 durs = [minim, minim, minim, minim, minim, crotchet, crotchet, tie minim quaver, quaver, quaver, quaver, crotchet]
 
-notes1 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale cmajor) notes) (repeat crotchet)
-notes2 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale (harmonicminor (pitch D Na))) notes) (repeat crotchet)
+notes1 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale cmajor) notes) durs
+notes2 = AbstractPhrase $ zipWith AbstractPitch (map (applyScale (harmonicminor (pitch D Na))) notes) durs
 
 
 ---- Some simple polyphony

@@ -1,4 +1,5 @@
-{-# LANGUAGE EmptyDataDecls, 
+{-# LANGUAGE OverlappingInstances,
+             EmptyDataDecls, 
              MultiParamTypeClasses, 
              UndecidableInstances, 
              IncoherentInstances, 
@@ -7,7 +8,6 @@
              FlexibleContexts,
              RankNTypes,
              ImpredicativeTypes,
-             OverlappingInstances,
              TypeSynonymInstances,
              ScopedTypeVariables,
              UnicodeSyntax,
@@ -39,12 +39,12 @@ import Data.AffineSpace
 import Data.VectorSpace
 import Data.Semigroup hiding (Min)
 
-import qualified Music.Lilypond as L
+import qualified Data.Music.Lilypond as L
 
 import Util (interleave, iterateM,
              compose, member, intersection,
              remove, nd, foldSG, under, divides,
-             listDiff)
+             listDiff, uniq)
 
 
 
@@ -108,6 +108,7 @@ data AbstractNote p i d where
   Conn :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
 --  ConnInt :: (Show p, Show i, Show d, Note p i d) => i -> AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
   Directive :: L.Music -> AbstractNote p i d
+--   Directive :: Bool -> AbstractNote p i d -- dummy
 
 deriving instance Eq (AbstractNote p i d)
 
@@ -115,11 +116,20 @@ coerceNote :: (Note p i d, Note p' i' d') => AbstractNote p i d -> AbstractNote 
 coerceNote (Directive d) = Directive d
 coerceNote n = error $ "Don't know how to coerce " ++ (show n)
 
+isConn (Conn _) = True
+isConn _ = False
+
+isNote (AbstractPitch _ _) = True
+isNote (AbstractInt _ _) = True
+isNote (Rest _) = True
+isNote _ = False
+
+
 -- Note: we *could* make Conn look like this:
 --     Conn :: (Note p i d, Note p' i' d') => AbstractPhrase (AbstractNote p' i' d') -> (AbstractNote p i d)
 -- because ideally we'd like Conn to be able to point to an
 -- AbstractPhrase of arbitrary type; but this breaks mapPhrase (and
--- everything else) do to GADTs being hard.
+-- everything else) due to GADTs being hard.
 
 
 -- A phrase of a particular type of note. The fact that notes can
@@ -297,14 +307,17 @@ class (Show i, Eq i, AdditiveGroup i) => Interval i where
 class (Transpose p i) => Scale s p i | s -> p i where
   tonic :: s -> AbstractPitch2
   tonic = head . scale
+  final :: s -> AbstractPitch2
+  final s = (tonic s) .+^ octave
   scale :: s -> [AbstractPitch2]
   applyScale :: s -> p -> AbstractPitch2
 
 class (Semigroup d, Show d, Eq d) => Duration d where
+  unit :: d
+  zeroD :: d -- unfortunately this is necessary
   combine :: d -> d -> d
   tie :: d -> d -> d
   tie = combine
-  unit :: d
 
 
 class Mensuration m where
@@ -331,6 +344,9 @@ class (Transpose p i) => Tuning t p i | t -> p i where
   tuneNote _ (Rest d) = Rest d
   tuneNote _ d = coerceNote d
 
+-- Any way of specifying a concrete realisation of tempo -- some magic
+-- involving the IO monad may allow for accelerations etc.
+
 class (Duration d) => Timing t d | t -> d where
   time :: t -> d -> AbstractDur3
   timeNote :: Note p i d => t -> AbstractNote p i d -> AbstractNote p i AbstractDur3
@@ -338,9 +354,6 @@ class (Duration d) => Timing t d | t -> d where
   timeNote t (AbstractInt i d) = AbstractInt i (time t d)
   timeNote t (Rest d) = Rest (time t d)
   timeNote _ d = coerceNote d
-
--- Any way of specifying a concrete realisation of tempo -- some magic
--- involving the IO monad may allow for accelerations etc.
 
 --------------
 
@@ -850,18 +863,21 @@ instance Transpose AbstractPitch3 AbstractInt3 where
 
 instance Duration AbstractDur1 where
   unit = AbstractDur1 Br
+  zeroD = error "zero-length mensuration duration not implemented yet"
   combine (AbstractDur1 a) (AbstractDur1 b) = AbstractDur1 $ Tie a b
 
 instance Duration AbstractDur2 where
   unit = AbstractDur2 (1 % 1)
-  combine (AbstractDur2 (nd -> (0, _))) _ = error "no zero durations!"
-  combine _ (AbstractDur2 (nd -> (0, _))) = error "no zero durations!"
+  zeroD = AbstractDur2 (0 % 1)
+  -- combine (AbstractDur2 (nd -> (0, _))) _ = error "no zero durations!"
+  -- combine _ (AbstractDur2 (nd -> (0, _))) = error "no zero durations!"
   combine (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
 
 instance Duration AbstractDur3 where
+  zeroD = AbstractDur3 0
   unit = AbstractDur3 1
-  combine (AbstractDur3 0) _ = error "no zero durations!"
-  combine _ (AbstractDur3 0) = error "no zero durations!"
+  -- combine (AbstractDur3 0) _ = error "no zero durations!"
+  -- combine _ (AbstractDur3 0) = error "no zero durations!"
   combine (AbstractDur3 t) (AbstractDur3 r) = AbstractDur3 (t + r)
 
 
@@ -900,6 +916,7 @@ mapPhraseSingle f (AbstractPhrase (n:ns)) = (AbstractPhrase [f n]) <> (mapPhrase
 
 
 
+-- by analogy with fold1
 foldPhrase1 :: Note p i d
               => (AbstractNote p i d -> AbstractNote p i d -> AbstractNote p i d)
               -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
@@ -912,6 +929,8 @@ foldPhrase1 f (AbstractPhrase (n:ns)) =
   case n of (Conn p) -> f (foldPhrase1 f p) (foldPhrase1 f (AbstractPhrase ns))
             (Directive _) -> foldPhrase1 f (AbstractPhrase ns)
             p -> f p (foldPhrase1 f (AbstractPhrase ns))
+
+foldPhrase1 _ _ = error "Exhausted patterns in foldPhrase1"
 
 foldPhrase :: Note p i d
               => (AbstractNote p i d -> a -> a)
@@ -929,8 +948,11 @@ foldPhrase f e (AbstractPhrase (n:ns)) =
             p -> f p (foldPhrase f e (AbstractPhrase ns))
 
 
-isConn (Conn _) = True
-isConn _ = False
+flattenPhrase :: (AbstractPhrase t) -> (AbstractPhrase t)
+flattenPhrase p@(AbstractPhrase (_:[])) = p
+flattenPhrase (AbstractPhrase (n:ns)) =
+  case n of (Conn p) -> p <> (flattenPhrase (AbstractPhrase ns))
+            q -> (AbstractPhrase [q]) <> (flattenPhrase (AbstractPhrase ns))
 
 -- foldPhrase1 with *no* recursion into connected phrases -- they're simply ignored.
 foldPhraseSingle :: Note p i d
@@ -952,20 +974,28 @@ foldPhraseSingle f (AbstractPhrase p) = foldPhrase' f (AbstractPhrase (filter (n
   foldPhrase' f (AbstractPhrase (n:ns)) = f n (foldPhrase' f (AbstractPhrase ns))
   foldPhrase' _ p = error ("Exhausted patterns in foldPhraseSingle: " ++ (show p))
 
-extractDur :: (Note p i d) => (AbstractNote p i d) => d
+-- extractDur :: (Note p i d) => (AbstractNote p i d) -> d
 extractDur (AbstractPitch _ d) = d
 extractDur (AbstractInt _ d) = d
 extractDur (Rest d) = d
 extractDur p = error ("Trying to extract duration from value with no duration: " ++ (show p))
 
-extractPitch :: (Note p i d) => (AbstractNote p i d) => p
+-- extractPitch :: (Note p i d) => (AbstractNote p i d) -> p
 extractPitch (AbstractPitch p _) = p
 extractPitch p = error ("Trying to extract duration from value with no duration: " ++ (show p))
 
 
 countDurs :: Note p i d => AbstractPhrase (AbstractNote p i d) -> d
-countDurs p = extractDur (countDurs' p) where
-  countDurs' = foldPhraseSingle (\n n' -> Rest $ (extractDur n) <> (extractDur n'))
+countDurs (AbstractPhrase []) = zeroD
+countDurs (AbstractPhrase p) = extractDur (countDurs' (AbstractPhrase (filter isNote p))) where
+  countDurs' (AbstractPhrase []) = Rest zeroD
+  countDurs' p = foldPhraseSingle (\n n' -> Rest $ (extractDur n) <> (extractDur n')) p
+
+countDursRec :: Note p i d => AbstractPhrase (AbstractNote p i d) -> d
+countDursRec (AbstractPhrase []) = zeroD
+countDursRec (AbstractPhrase p) = extractDur (countDurs' (AbstractPhrase (filter isNote p))) where
+  countDurs' (AbstractPhrase []) = Rest zeroD
+  countDurs' p = foldPhrase1 (\n n' -> Rest $ (extractDur n) <> (extractDur n')) p
 
 splitVoices :: (Note p i d) =>
                AbstractPhrase (AbstractNote p i d) -> [AbstractPhrase (AbstractNote p i d)]
@@ -1038,14 +1068,23 @@ apDur _ p = p
 instance Show (AbstractNote p i d) => Show (AbstractPhrase (AbstractNote p i d)) where
   show (AbstractPhrase x) = show x
 
--- Phrases are a semigroup because phrases containing zero notes are forbidden.
+-- -- Phrases are a semigroup because phrases containing zero notes are forbidden.
+-- instance (Note p i d) => Semigroup (AbstractPhrase (AbstractNote p i d)) where
+  -- (AbstractPhrase []) <> _ = error "no empty phrases!"
+  -- _ <> (AbstractPhrase []) = error "no empty phrases!"
+  -- (AbstractPhrase a) <> (AbstractPhrase b) = AbstractPhrase $ a ++ b
+
+-- Relaxing this condition for now, as PhraseContext needs to be able
+-- to manipulate zero-length phrases.
 instance (Note p i d) => Semigroup (AbstractPhrase (AbstractNote p i d)) where
-  (AbstractPhrase []) <> _ = error "no empty phrases!"
-  _ <> (AbstractPhrase []) = error "no empty phrases!"
+  (AbstractPhrase []) <> p = p
+  p <> (AbstractPhrase []) = p
   (AbstractPhrase a) <> (AbstractPhrase b) = AbstractPhrase $ a ++ b
+
   
-  
-repeatPhrase 0 _ = error "no empty phrases!"
+emptyPhrase = AbstractPhrase []
+
+repeatPhrase 0 _ = error "no empty phrases!" -- hmmmm
 repeatPhrase 1 p = p
 repeatPhrase n p = p <> (repeatPhrase (n - 1) p)
 
@@ -1077,10 +1116,20 @@ mapMusic f (Voices ps) = Voices $ map f ps
 
 
 instance (Note p i d) => Semigroup (Music (AbstractNote p i d)) where
-  (Voices v) <> (Voices v') = Voices (v ++ v')
+  (Voices v) <> (Voices v') = Voices $ uniq (v ++ v')
   (Voices v) <> (Start p) = (Voices v) <> (explodeVoices (Start p))
   (Start p) <> (Voices v) = (explodeVoices (Start p)) <> (Voices v)
   (Start p) <> (Start p') = Start $ (phrase [(Conn p')]) <> p
+
+
+
+-- Function to produce a chord
+chord :: (Note p i d) => d -> [p] -> AbstractPhrase (AbstractNote p i d)
+chord _ [] = error "no empty phrases!"
+chord d (p:[]) = phrase [note p d]
+chord d (p:ps) = let r = chord d ps
+                 in phrase [Conn r, note p d]
+
 
 
 

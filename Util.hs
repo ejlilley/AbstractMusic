@@ -10,6 +10,8 @@ import Data.Semigroup
 import Data.List
 
 interleave (x:xs) (y:ys) = [x, y] ++ (interleave xs ys)
+interleave [] ys = ys
+interleave ys [] = ys
 
 log2 x = (log x) / (log 2)
 
@@ -69,3 +71,5 @@ listDiff [] [] = []
 listDiff a [] = a
 listDiff [] a = a
 listDiff (a:as) b = listDiff as (delete a b)
+
+

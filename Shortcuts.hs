@@ -14,7 +14,7 @@ module Shortcuts (pitch, freq, rat, int, rhythm, dotted, ddotted, tdotted, phras
                   eeses, ees, e, eis, eisis, feses, fes, f, fis, fisis, geses, ges, g, gis, gisis,
                   d1, _P1, _A1, d2, m2, _M2, _A2, d3, m3, _M3, _A3, d4, _P4, _A4, d5, _P5, _A5, d6, m6, _M6, _A6, d7, m7, _M7, _A7, d8, _P8, _A8,
                   comma, (.+^), (<>), (.-^), (.-.), (^-^), (^+^), (^*), (*^), Interval(..), Pitch(..), Duration(..),
-                  (∨), (∧), (∨∨), (∧∧)) where
+                  (∨), (∧), (∨∨), (∧∧), noteList) where
 
 import Data.Ratio
 import Music (AbstractPitch2(..), AbstractInt2(..), AbstractDur2(..),

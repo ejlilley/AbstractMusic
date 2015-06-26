@@ -40,10 +40,15 @@ module Tuning (Tuning(..),
                TET31(..),
                TET53(..),
                TET72(..),
+               ArbitraryTET(..),
                edo,
+               edoTune,
+               synTune,
                DummyTuning(..)) where
 
 import Prelude hiding (negate)
+
+import Debug.Trace
 
 import Util (sortUnder, sortPairs)
 
@@ -171,7 +176,7 @@ pureoctave = ArbitrarySyntonic (_P8, rat 2)
 
 septimal    = pureoctave (_A6,      rat $ 7/4)
 schismatic  = pureoctave (8 *^ _P4, rat $ 10) -- gives you just major thirds as the interval d4, and just minor thirds as A2.
-kleismic    = pureoctave (6 *^ m3,  rat $ 3)
+kleismic    = pureoctave (6 *^ m3,  rat $ 3) -- this might be wrong
 augmented   = pureoctave (3 *^ _M3, rat $ 2)
 pelogic     = pureoctave (4 *^ _P5, rat $ 24/5)
 wuerschmidt = pureoctave (8 *^ _M3, rat $ 6)
@@ -182,12 +187,14 @@ sycamore    = pureoctave (5 *^ _A1, rat $ 6/5)
 escapade    = pureoctave (9 *^ _M3, rat $ 16384 / 2187)
 vishnuzmic  = pureoctave (7 *^ _A1, rat $ 4/3)
 inverted    = pureoctave (_P5,      rat $ 4/3) -- swap fourths and fifths
-synTET12    = pureoctave (d2,       rat $ 1) -- precisely equivalent to TET12
+synTET12    = pureoctave (d2,       rat $ 1) -- precisely equivalent to TET12, just explicitly tempering out the d2 comma
+dd2 = d2 ^-^ _A1
+synTET19    = pureoctave (dd2,      rat $ 1) -- same but with TET19
 
 -- Any tuning involving setting an interval to 1 ("tempering" it out)
--- is a projection to a rank-1 tuning -- essentially what the function
--- genericEdo below is doing is automatically determining the interval
--- to temper out.
+-- is a projection to a rank-1 tuning -- essentially, the function
+-- 'genericEdo' is automatically determining the interval to temper
+-- out.
 
 pureFifthsThirds = ArbitrarySyntonic (_P5, rat $ 3/2) (_M3, rat $ 5/4) -- pure fifths and thirds, but not octaves(!)
 
@@ -313,10 +320,15 @@ instance Tuning TET118 AbstractPitch2 AbstractInt2 where
 
 ---- EDO helper functions:
 
--- An example of how to find (x,y) values for EDO tunings
-findEdo d = sortPairs $ filter (\(x,y) -> 12*x + 7*y == d) [(x,y) | x <- [-100..100], y <- [-100..100]]
+memo f = let table = [ (x, f x) | x <- [0..] ]
+         in  \y -> let Just r = lookup y table in r
 
-deriveEdo d = case findEdo d of
+-- An example of how to find (x,y) values for EDO tunings
+findEdo = memo f where
+  f d = sortPairs $ filter (\(x,y) -> 12*x + 7*y == d) [(x,y) | x <- [-100..100], y <- [-100..100]]
+
+deriveEdo d =
+  case findEdo d of
   p:ps -> p
   [] -> error $ "No edo solutions for " ++ (show d)
 
@@ -330,6 +342,7 @@ data ArbitraryTET = ArbitraryTET Int (AbstractPitch2, AbstractPitch3) deriving S
 instance Tuning ArbitraryTET AbstractPitch2 AbstractInt2 where
   base (ArbitraryTET d b) = b
   tuneInt (ArbitraryTET d b) = genericEdo d
+
 
 -- The procedure for mapping intervals to note-numbering in each
 -- particular EDO is suited to finding good approximations to

@@ -20,6 +20,8 @@ data GenericScale where
 
 -- todo: represent/enforce scale length(s) with type-level Nats.
 
+-- todo: make the basic scale type a list of *intervals* (not pitches). e.g. baseMajor = [M2, M2, m2, M2, M2, M2, m2] etc.
+
 ficToAcc Raise = sharpen
 ficToAcc Neutral = id
 ficToAcc Lower = flatten
