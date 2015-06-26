@@ -18,6 +18,7 @@ import Tuning
 import FiveLimit (JustTuning(..), JustPitch(..), JustInt(..), ForceJustTuning(..))
 import Scales (minor, major, HarmonicMinor(..), Minor, Major,
                harmonicminor, infiniteScale, chromaticScale)
+import Util (allPairs, interleave)
 import Shortcuts
 import Lilypond
 import Output
@@ -54,11 +55,11 @@ longquavercmajscale = phrase $ zipWith note (take 22 $ infiniteScale cmajor) (re
 play_longquavercmajscale = playCsound $ mapPhrase (noteToSound et me) longquavercmajscale
 
 -- example tuning systems:
-p = Pythagorean (pitch A Na, AbstractPitch3 440.0)
+p = pythagorean (pitch A Na, AbstractPitch3 440.0)
 
-et = TET12 (pitch A Na, AbstractPitch3 440.0)
+et = equal (pitch A Na, AbstractPitch3 440.0)
 
-qc = QCMeanTone (pitch A Na, AbstractPitch3 440.0)
+qc = qcmeantone (pitch A Na, AbstractPitch3 440.0)
 
 me = Metronome 240
 
@@ -100,3 +101,11 @@ chordsounds = mapMusic (mapPhrase (noteToSound et me)) chords
 
 -- and now to hear it through your speakers
 playchordsounds = playCsounds chordsounds
+
+----------------
+
+pos = [0..]
+neg = map (*(-1)) [1..]
+ints = interleave pos neg
+pairs = allPairs ints ints
+intervals = map (\(a,d) -> a *^ _A1 ^+^ d *^ d2) pairs
