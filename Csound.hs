@@ -4,6 +4,11 @@
              RankNTypes,
              FlexibleInstances #-}
 
+----------------
+---------- Old, deprecated Csound interface!
+---------- See CsoundExp.hs for better interface (incl. realtime support)
+----------------
+
 module Csound where
 
 import Music (Note3, AbstractNote(..), AbstractPitch3(..), AbstractInt3(..), AbstractDur3(..), absolute, AbstractPhrase(..), Note(..), Music(..), explodeVoices)

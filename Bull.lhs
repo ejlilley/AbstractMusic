@@ -26,6 +26,7 @@ import Music (mapPhraseSingle, apPitch, apDur, apTran, apInt,
 
 import Shortcuts
 import Output
+import Csound.Patch
 import qualified Data.Music.Lilypond as L
 import Lilypond
 import Tuning
@@ -1284,8 +1285,8 @@ v4 = downNoctaves 1 $ phrase $
   [Directive $ L.Clef L.Bass,
    note g s]
 
-tuning = TET12 (a, freq 440)
-speed = Metronome 360
+tuning = equal (a, freq 440)
+speed = Metronome 180
 
 music = Voices [treble, alto, tenor, bass]
 

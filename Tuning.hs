@@ -40,6 +40,8 @@ module Tuning (Tuning(..),
                edo,
                edoTune,
                synTune,
+               pythagorean,
+               qcmeantone,
                DummyTuning(..)) where
 
 import Prelude hiding (negate)

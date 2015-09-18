@@ -26,6 +26,7 @@ import Music (mapPhraseSingle, apPitch, apDur, apTran, apInt,
 
 import Shortcuts
 import Output
+import Csound.Patch
 import qualified Data.Music.Lilypond as L
 import Lilypond
 import Tuning
@@ -287,7 +288,7 @@ cantus = downNoctaves 1 $ phrase $
 
 
 tuning = equal (a, freq 440)
-speed = Metronome 480
+speed = Metronome 240
 
 music = Voices [cantus, altus, tenor, bassus]
 

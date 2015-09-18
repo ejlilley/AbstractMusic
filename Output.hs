@@ -1,9 +1,11 @@
 -- module Output (playCsound, playCsounds, lilypond) where
-module Output (playCsound, playCsounds) where
+module Output (playCsound, writeCsound) where
 
-import Music (Note3, AbstractNote(..), AbstractPitch3(..), AbstractInt3(..), AbstractDur3(..), absolute, AbstractPhrase(..))
+-- import Music (Note3, AbstractNote(..), AbstractPitch3(..), AbstractInt3(..), AbstractDur3(..), absolute, AbstractPhrase(..))
 
-import Csound (testFreqs, playCsound, playCsounds)
+import CsoundExp
+
+-- import Csound (testFreqs, playCsound, playCsounds)
 -- import Lilypond
 
 

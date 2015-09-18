@@ -51,6 +51,7 @@ import Music (mapPhraseSingle, apPitch, apDur, apTran, apInt,
 
 import Shortcuts
 import Output
+import Csound.Patch
 import qualified Data.Music.Lilypond as L
 import Lilypond
 import Tuning
@@ -1456,7 +1457,7 @@ v4c = downNoctaves 2 $ phrase $
 \begin{code}
 -- tuning = TET12 (a, freq 440)
 tuning = synTET19 (a, freq 440)
-speed = Metronome 480
+speed = Metronome 240
 
 music = Start v4
 
@@ -1468,13 +1469,7 @@ performance t = mapMusic (mapPhrase (noteToSound t speed)) voices
 \end{code}
 
 To hear sounds, make sure you have Csound installed, then execute
-    the command: playCsounds (performance tuning)
+    the command: playCsound harpsichord (performance tuning)
 
 To get Lilypond output, execute the command:
     writeLilypond "/tmp" $ lilypondFile voices
-
-
-
-
-
-
