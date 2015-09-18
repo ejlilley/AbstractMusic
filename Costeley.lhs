@@ -5,28 +5,29 @@
 # Guillaume Costeley's 19-tone keyboard
 
 One of the few pieces composed specifically for a keyboard with 19
-keys (it is keyboard music, despite being an arrangement of one of his
-own Chansons, and my [ropey Lilypond output](lily.html) which spreads it onto
+keys (it /is/ keyboard music, despite being an arrangement of one of his
+own Chansons, and my [ropey Lilypond output](costeley.pdf) which spreads it onto
 4+ staves).
 
 There is a synthesised performance in [19-equal
-temperament](tet19.ogg) -- TET-19 allows for a distinction to be made
+temperament](costeley-tet19.ogg) -- TET-19 allows for a distinction to be made
 between sharp and flat notes that would be enharmonically equivalent
 in TET-12.
 
-On a normal [12-equal temperament](tet12.ogg) keyboard, it would sound
-like [this](tet12.ogg), but note that a fair bit of the writing
-assumes that accidentals borrowed from other keys are tuned in such a
-way to make chords sound right in TET-19. No distinction between
-enharmonic accidentals is possible.
+Here'show it would sound on a normal [12-equal temperament](tet12.ogg)
+keyboard, but note that a fair bit of the writing assumes that
+accidentals borrowed from other keys are tuned in such a way to make
+chords sound right in TET-19. No distinction between enharmonic
+accidentals is possible.
 
-In [TET-7](tet7.ogg) (which really exists) it would sound like this
+In [TET-7](costeley-tet7.ogg) (which really exists) it would sound like this
 [this](tet7.ogg) -- accidentals cannot be represented at all in this
 tuning system.
 
-[TET-31](tet31.ogg) would allow for some number of double-sharps/flats
-(of which there aren't any in this piece, obviously), but the other
-changes to the sound are interesting too.
+[TET-31](costeley-tet31.ogg) (which also really exists) would allow
+for some number of double-sharps/flats -- of which there aren't any in
+this piece, obviously -- but the other changes to the sound are
+interesting too.
 
 Note: the input syntax below is Lilypond-esque, but all the pitches
 are absolute.
@@ -231,7 +232,7 @@ v2 = downNoctaves 1 $ phrase $
    note ees cr,
    note fes cr,
    note ges cr,
-   note aes m,
+   note (aes∧) m,
    note ges (dotted m),
    note fes cr,
    note fes s,
@@ -1455,7 +1456,7 @@ v4c = downNoctaves 2 $ phrase $
 
 
 \begin{code}
--- tuning = TET12 (a, freq 440)
+-- tuning = equal (a, freq 440)
 tuning = synTET19 (a, freq 440)
 speed = Metronome 240
 

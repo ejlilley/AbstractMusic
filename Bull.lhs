@@ -4,7 +4,7 @@
 
 # John Bull -- Ut, re, mi, fa, sol, la
 
-Fitzwilliam Virginal Book No. 60
+Fitzwilliam Virginal Book, No. 60
 
 ----------------
 
