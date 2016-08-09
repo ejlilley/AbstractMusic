@@ -1,13 +1,10 @@
 {-# LANGUAGE OverlappingInstances,
              EmptyDataDecls, 
              MultiParamTypeClasses, 
-             UndecidableInstances, 
-             IncoherentInstances, 
              DataKinds,
              FunctionalDependencies,
              FlexibleContexts,
              RankNTypes,
-             ImpredicativeTypes,
              TypeSynonymInstances,
              ScopedTypeVariables,
              UnicodeSyntax,
@@ -19,8 +16,13 @@
              GeneralizedNewtypeDeriving,
              StandaloneDeriving,
              ViewPatterns,
-             ExplicitForAll,
+             UndecidableInstances, 
              FlexibleInstances #-}
+
+             -- ImpredicativeTypes,
+             -- ExplicitForAll,
+             -- IncoherentInstances, 
+
 
 module Music where
 -- Todo: make this file literate Haskell (.lhs), due to the large
@@ -39,7 +41,7 @@ import Data.AffineSpace
 import Data.VectorSpace
 import Data.Semigroup hiding (Min)
 
-import qualified Data.Music.Lilypond as L
+-- import qualified Data.Music.Lilypond as L
 
 import Util (interleave, iterateM,
              compose, member, intersection,
@@ -60,8 +62,8 @@ data AbstractInt2 = AbstractInt2 Quality Number -- intervals between ordinary pi
 data AbstractInt3 = AbstractInt3 FreqRat deriving Eq -- ratios between frequencis
 
 data AbstractDur1 = AbstractDur1 MDur deriving (Eq, Show) -- prolations
-data AbstractDur2 = AbstractDur2 (Ratio Integer) deriving Eq -- note durations
-data AbstractDur3 = AbstractDur3 Length deriving Eq -- actual duration in milliseconds
+data AbstractDur2 = AbstractDur2 (Ratio Int) deriving (Eq, Ord) -- note durations
+data AbstractDur3 = AbstractDur3 Length deriving (Eq, Ord) -- actual duration in milliseconds
 
 data Name = A | B | C | D | E | F | G | Up Name | Down Name deriving (Eq)
 data Accidental = Na | Fl Accidental | Sh Accidental deriving Eq
@@ -74,7 +76,7 @@ type FreqRat = Double -- ratio of frequencies
 type Freq = Double -- frequency in Hz
 type Length = Double
 
-data MDur = Mx | Lo | Br | Sb | Mi | Sm | Ff | Sf | Tie MDur MDur | Punctus MDur
+data MDur = Mx | Lo | Br | Sb | Mi | Sm | Ff | Sf | MTie MDur MDur | Punctus MDur
           deriving (Eq, Show)
 
 
@@ -107,10 +109,11 @@ data AbstractNote p i d where
   Rest :: (Duration d, Show d) => d -> (AbstractNote p i d)
   Conn :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
 --  ConnInt :: (Show p, Show i, Show d, Note p i d) => i -> AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
-  Directive :: L.Music -> AbstractNote p i d
---   Directive :: Bool -> AbstractNote p i d -- dummy
+--   Directive :: L.Music -> AbstractNote p i d
+  Directive :: Bool -> AbstractNote p i d -- dummy
 
 deriving instance Eq (AbstractNote p i d)
+
 
 coerceNote :: (Note p i d, Note p' i' d') => AbstractNote p i d -> AbstractNote p' i' d'
 coerceNote (Directive d) = Directive d
@@ -316,8 +319,13 @@ class (Semigroup d, Show d, Eq d) => Duration d where
   unit :: d
   zeroD :: d -- unfortunately this is necessary
   combine :: d -> d -> d
+  subD :: d -> d -> d -- not always possible
   tie :: d -> d -> d
   tie = combine
+  showDur :: d -> String
+  showDur d = show d
+  showRest :: d -> String
+  showRest d = show d
 
 
 class Mensuration m where
@@ -462,51 +470,27 @@ instance Enum Number where
 
 
 
-
-showNote (AbstractDur2 (nd -> (2, 1))) = "𝅜"
-showNote (AbstractDur2 (nd -> (1, 1))) = "𝅝"
-showNote (AbstractDur2 (nd -> (1, 2))) = "𝅗𝅥"
-showNote (AbstractDur2 (nd -> (1, 4))) = "𝅘𝅥"
-showNote (AbstractDur2 (nd -> (1, 8))) = "𝅘𝅥𝅮"
-showNote (AbstractDur2 (nd -> (1, 16))) = "𝅘𝅥𝅯"
-showNote (AbstractDur2 (nd -> (1, 32))) = "𝅘𝅥𝅰"
-showNote (AbstractDur2 (nd -> (1, 64))) = "𝅘𝅥𝅱"
-showNote (AbstractDur2 (nd -> (1, 128))) = "𝅘𝅥𝅲"
-
-showNote (AbstractDur2 r) = show r
-
-showRest (AbstractDur2 (nd -> (2, 1))) = "𝄺"
-showRest (AbstractDur2 (nd -> (1, 1))) = "𝄻"
-showRest (AbstractDur2 (nd -> (1, 2))) = "𝄼"
-showRest (AbstractDur2 (nd -> (1, 4))) = "𝄽"
-showRest (AbstractDur2 (nd -> (1, 8))) = "𝄾"
-showRest (AbstractDur2 (nd -> (1, 16))) = "𝄿"
-showRest (AbstractDur2 (nd -> (1, 32))) = "𝅀"
-showRest (AbstractDur2 (nd -> (1, 64))) = "𝅁"
-showRest (AbstractDur2 (nd -> (1, 128))) = "𝅂"
-
-showRest (AbstractDur2 r) = show r
-
 type Note1 = AbstractNote AbstractPitch1 AbstractInt1 AbstractDur1
 type Note2 = AbstractNote AbstractPitch2 AbstractInt2 AbstractDur2
 type Note3 = AbstractNote AbstractPitch3 AbstractInt3 AbstractDur3
 
-instance Show Note2 where
-  show (AbstractPitch p d) = "{" ++ (show p) ++ " " ++ (showNote d) ++ "}"
-  show (AbstractInt i d) = "{" ++ (show i) ++ " " ++ (showNote d) ++ "}"
-  show (Rest d) = "{" ++ (showRest d) ++ "}"
-  show (Conn c) = "{" ++ (show c) ++ "}"
---  show (ConnInt i c) = "{" ++ (show i) ++ "|" ++ (show c) ++ "}"
-  show (Directive c) = "{" ++ (show c) ++ "}"
-
 instance Show (AbstractNote p i d) where
-  show (AbstractPitch p d) = "Note{" ++ (show p) ++ " " ++ (show d) ++ "}"
-  show (AbstractInt i d) = "Interval{" ++ (show i) ++ " " ++ (show d) ++ "}"
-  show (Rest d) = "Rest{" ++ (show d) ++ "}"
-  show (Conn c) = "{" ++ (show c) ++ "}"
+  show (AbstractPitch p d) = "Note{" ++ (show p) ++ " " ++ (showDur d) ++ "}"
+  show (AbstractInt i d) = "Interval{" ++ (show i) ++ " " ++ (showDur d) ++ "}"
+  show (Rest d) = "Rest{" ++ (showRest d) ++ "}"
+  show (Conn c) = "Conn{" ++ (show c) ++ "}"
 --  show (ConnInt i c) = "{" ++ (show i) ++ "|" ++ (show c) ++ "}"
   show (Directive c) = "{" ++ (show c) ++ "}"
 
+-- deriving instance Show (AbstractNote p i d)
+
+-- instance Show Note2 where
+  -- show (AbstractPitch p d) = "{" ++ (show p) ++ " " ++ (showDur d) ++ "}"
+  -- show (AbstractInt i d) = "{" ++ (show i) ++ " " ++ (showDur d) ++ "}"
+  -- show (Rest d) = "{" ++ (showRest d) ++ "}"
+  -- show (Conn c) = "{" ++ (show c) ++ "}"
+-- --  show (ConnInt i c) = "{" ++ (show i) ++ "|" ++ (show c) ++ "}"
+  -- show (Directive c) = "{" ++ (show c) ++ "}"
 
 ------------------------------------
 -- Instances of classes defined above.
@@ -864,7 +848,8 @@ instance Transpose AbstractPitch3 AbstractInt3 where
 instance Duration AbstractDur1 where
   unit = AbstractDur1 Br
   zeroD = error "zero-length mensuration duration not implemented yet"
-  combine (AbstractDur1 a) (AbstractDur1 b) = AbstractDur1 $ Tie a b
+  combine (AbstractDur1 a) (AbstractDur1 b) = AbstractDur1 $ MTie a b
+  subD = error "cannot subtract mensurations yet"
 
 instance Duration AbstractDur2 where
   unit = AbstractDur2 (1 % 1)
@@ -872,6 +857,30 @@ instance Duration AbstractDur2 where
   -- combine (AbstractDur2 (nd -> (0, _))) _ = error "no zero durations!"
   -- combine _ (AbstractDur2 (nd -> (0, _))) = error "no zero durations!"
   combine (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r + s)
+  subD (AbstractDur2 r) (AbstractDur2 s) = AbstractDur2 (r - s)
+
+  showDur (AbstractDur2 (nd -> (2, 1))) = "𝅜"
+  showDur (AbstractDur2 (nd -> (1, 1))) = "𝅝"
+  showDur (AbstractDur2 (nd -> (1, 2))) = "𝅗𝅥"
+  showDur (AbstractDur2 (nd -> (1, 4))) = "𝅘𝅥"
+  showDur (AbstractDur2 (nd -> (1, 8))) = "𝅘𝅥𝅮"
+  showDur (AbstractDur2 (nd -> (1, 16))) = "𝅘𝅥𝅯"
+  showDur (AbstractDur2 (nd -> (1, 32))) = "𝅘𝅥𝅰"
+  showDur (AbstractDur2 (nd -> (1, 64))) = "𝅘𝅥𝅱"
+  showDur (AbstractDur2 (nd -> (1, 128))) = "𝅘𝅥𝅲"
+  showDur (AbstractDur2 r) = show r
+
+  showRest (AbstractDur2 (nd -> (2, 1))) = "𝄺"
+  showRest (AbstractDur2 (nd -> (1, 1))) = "𝄻"
+  showRest (AbstractDur2 (nd -> (1, 2))) = "𝄼"
+  showRest (AbstractDur2 (nd -> (1, 4))) = "𝄽"
+  showRest (AbstractDur2 (nd -> (1, 8))) = "𝄾"
+  showRest (AbstractDur2 (nd -> (1, 16))) = "𝄿"
+  showRest (AbstractDur2 (nd -> (1, 32))) = "𝅀"
+  showRest (AbstractDur2 (nd -> (1, 64))) = "𝅁"
+  showRest (AbstractDur2 (nd -> (1, 128))) = "𝅂"
+  showRest (AbstractDur2 r) = show r
+
 
 instance Duration AbstractDur3 where
   zeroD = AbstractDur3 0
@@ -879,15 +888,17 @@ instance Duration AbstractDur3 where
   -- combine (AbstractDur3 0) _ = error "no zero durations!"
   -- combine _ (AbstractDur3 0) = error "no zero durations!"
   combine (AbstractDur3 t) (AbstractDur3 r) = AbstractDur3 (t + r)
+  subD (AbstractDur3 t) (AbstractDur3 r) = AbstractDur3 (t - r)
 
 
 -- Durations are a semigroup because zero-length durations are
 -- forbidden.
-instance Duration d => Semigroup d where
+instance (Duration d) => Semigroup d where
   (<>) = combine
-  
+
 instance Timing Metronome AbstractDur2 where
-  time (Metronome n) (AbstractDur2 r) = AbstractDur3 (240000/(fromIntegral n) * (fromRational r))
+  time (Metronome n) (AbstractDur2 r) = AbstractDur3 (realToFrac ((240000 % n) * r))
+  -- time (Metronome n) (AbstractDur2 r) = AbstractDur3 (240000/(fromIntegral n) * (fromRational r))
 -- todo: check this calculation
 -- 60 bpm = 15 sbpm
 -- 1 sb = 60s/15 = 60s/(bpm/4) = 60000 ms / (bpm/4)
@@ -1090,7 +1101,7 @@ repeatPhrase n p = p <> (repeatPhrase (n - 1) p)
 
 
 explodeVoices :: (Note p i d) => Music (AbstractNote p i d) -> Music (AbstractNote p i d)
-explodeVoices (Start p) = Voices $ splitVoices p
+explodeVoices (Start p) = Voices $ filter (/= emptyPhrase) $ splitVoices p
 explodeVoices (Voices ps) = Voices $ concatMap splitVoices ps
 
 revVoices (Voices ps) = Voices $ reverse ps

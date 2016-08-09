@@ -27,7 +27,7 @@ import Scales (minor, major, harmonicminor, melodicminor, infiniteScale)
 import Shortcuts
 
 import Output
-import Lilypond
+import LilyPrint
 
 import Data.Ratio
 import Data.Semigroup hiding (Min)

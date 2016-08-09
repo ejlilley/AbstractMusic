@@ -20,7 +20,7 @@ import Scales (minor, major, HarmonicMinor(..), Minor, Major,
                harmonicminor, infiniteScale, chromaticScale)
 import Util (allPairs, interleave)
 import Shortcuts
-import Lilypond
+import LilyPrint
 import Output
 
 -- example notes:
