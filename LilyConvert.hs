@@ -4,7 +4,7 @@
              FlexibleInstances #-}
 
 
-module LilyConvert where
+module LilyConvert (getScore, lilyExpr) where
 
 import Prelude hiding (negate)
 
@@ -136,8 +136,8 @@ lilyExpr (Tup (LilyTuplet r e)) = mapPhrase (apDur (\(AbstractDur2 d) -> Abstrac
 -- filter out types of Expr that we can't cope with
 
 filterOut :: LilyExpr -> LilyExpr
-filterOut (Seq (LilySequential s)) = Seq $ LilySequential (filterOut' s)
-filterOut (Sim (LilySimultaneous s)) = Sim $ LilySimultaneous (filterOut' s)
+filterOut (Seq (LilySequential s)) = Seq $ LilySequential (filterOutList s)
+filterOut (Sim (LilySimultaneous s)) = Sim $ LilySimultaneous (filterOutList s)
 filterOut (Voice (LilyVoice a b e)) = Voice $ LilyVoice a b (filterOut e)
 filterOut (Staff (LilyStaff a b e)) = Staff $ LilyStaff a b (filterOut e)
 filterOut (Rel (LilyRelative a e)) = Rel $ LilyRelative a (filterOut e)
@@ -146,23 +146,23 @@ filterOut e = e
 
 
 
-filterOut' :: [LilyExpr] -> [LilyExpr]
-filterOut' [] = []
--- filterOut' ((Tie _):es) = filterOut' es
-filterOut' ((Bar _):es) = filterOut' es
-filterOut' ((Time _):es) = filterOut' es
-filterOut' ((Key _):es) = filterOut' es
-filterOut' ((Clef _):es) = filterOut' es
-filterOut' ((Ident _):es) = filterOut' es
--- filterOut' ((Tup _):es) = filterOut' es
-filterOut' ((Change _):es) = filterOut' es
--- filterOut' ((Rel _):es) = filterOut' es
--- filterOut' ((Fix _):es) = filterOut' es
-filterOut' ((Lit _):es) = filterOut' es
-filterOut' ((Assign _):es) = filterOut' es
-filterOut' (LayoutExpr:es) = filterOut' es
-filterOut' (MidiExpr:es) = filterOut' es
-filterOut' (e:es) = (filterOut e) : (filterOut' es)
+filterOutList :: [LilyExpr] -> [LilyExpr]
+filterOutList [] = []
+-- filterOutList ((Tie _):es) = filterOutList es
+filterOutList ((Bar _):es) = filterOutList es
+filterOutList ((Time _):es) = filterOutList es
+filterOutList ((Key _):es) = filterOutList es
+filterOutList ((Clef _):es) = filterOutList es
+filterOutList ((Ident _):es) = filterOutList es
+-- filterOutList ((Tup _):es) = filterOutList es
+filterOutList ((Change _):es) = filterOutList es
+-- filterOutList ((Rel _):es) = filterOutList es
+-- filterOutList ((Fix _):es) = filterOutList es
+filterOutList ((Lit _):es) = filterOutList es
+filterOutList ((Assign _):es) = filterOutList es
+filterOutList (LayoutExpr:es) = filterOutList es
+filterOutList (MidiExpr:es) = filterOutList es
+filterOutList (e:es) = (filterOut e) : (filterOutList es)
 
 getScore :: LilyFile -> Music Note2
 getScore ((Score e):xs) = Start $ lilyExpr (((mapSeqs collapseTies) . expandDur . expandRel . filterOut) e)

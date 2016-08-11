@@ -1,0 +1,38 @@
+#+title: AbstractMusic
+
+* Requirements
+  You will need the following packages from Hackage (and their
+  dependencies):
+  - =vector-space=
+  - =csound-catalog=
+
+  You will also need Csound 6 installed to listen to the example
+  scores, and Lilypond to render them as PDFs if desired.
+
+* Instructions
+  There is a single command-line program, =readlily=, that you can use
+  out-of-the-box. To compile, type =make readlily=.
+  Then run e.g. =./readlily -t tet19 example-scores/seigneur-dieu-ta-pitie.ly= to listen to the piece written by Costeley in 19-division equal temperament.
+  =./readlily -h= will show you the other options.
+
+* General info
+
+  A general framework for constructing and manipulating different kinds
+  of notes (degrees of scales; intervals that are members of some
+  algebra; frequencies; etc.) and transforming between them (by applying
+  a concrete scale; applying some tuning system; etc.).
+  
+  As an example, the data type `AbstractPitch2` in `Music.hs` is the
+  basic representation of musical pitch; it forms the points in an
+  affine space, with the standard musical interval (denoted
+  `AbstractInt2`) forming the associated vectors between points. The
+  underlying representation of `AbstractInt2` is as a rank-2 free
+  Abelian group (using a particular pair of intervals as a basis). Hence
+  the easiest way of tuning these pitches/intervals is with a rank-2
+  (aka syntonic, aka meantone) temperament, of which the notable
+  examples are Pythagorean and quarter-comma meantone tuning (see
+  `Tuning.hs`). Rank-1 tuning systems (equal temperament, e.g. 12-TET)
+  can also be used, by judicious application of the vector dot product
+  -- projecting the 2D vectors/points of `AbstractPitch2`'s vector space
+  onto some 1D line, which is then split up into 12/19/31/etc. equal
+  pieces (most commonly 12).

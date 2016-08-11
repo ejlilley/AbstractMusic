@@ -17,7 +17,7 @@ module LilyParse (LilyFile, LilyTopLevel(..), LilyRelative(..), LilyNoteName(..)
                   parseLiteral, parseExpressive, parseArticulation, parseSlur,
                   parseScore, parseVersion, parseVoice, parseStaff,
                   parseChange, parseClef, parseKey, parseRelative,
-                  parseExpr, parseExprs, parseTopLevel, parseFile,
+                  parseExpr, parseExprs, parseTopLevel, parseLily,
                   expandVariables, expandRel, expandDur,
                   mapNotes, mapIdents, mapSeqs, mapExprs
                  ) where
@@ -601,7 +601,10 @@ parseVoice = LilyVoice <$> (parseVoice' *> ((try ((char '=') *> sorc *> (Just <$
              <*> (sorc *> (try (Just <$> parseContext)) <|> return Nothing)
              <*> (sorc *> parseExpr)
 
-parseStaff' = (string "\\new") *> sorc *> (try (string "Staff") <|> (string "PianoStaff")) *> sorc
+staffNames = ["Staff", "PianoStaff", "ChoirStaff"]
+parseStaffNames = foldl1 (<|>) $ map try $ map string staffNames
+
+parseStaff' = (string "\\new") *> sorc *> parseStaffNames *> sorc
 parseStaff = LilyStaff <$> (parseStaff' *> ((try ((char '=') *> sorc *> (Just <$> parseLitString))) <|> return Nothing))
              <*> (sorc *> (try (Just <$> parseContext)) <|> return Nothing)
              <*> (sorc *> parseExpr)
@@ -618,12 +621,12 @@ parseTime = (,) <$> (string "\\time" *> sorc *> parseLitInt)
             <*> (sorc *> char '/' *> (readDur <$> parseBaseDur))
 
 parseClef :: Parsec String () LilyClef
-parseClef = (string "\\clef" *> sorc) *>
-            ((Treble <$ string "treble")
-             <|> (Bass <$ string "bass")
-             <|> (Soprano <$ string "soprano")
-             <|> (Alto <$ string "alto")
-             <|> (Tenor <$ string "tenor"))
+parseClef = (string "\\clef" *> sorc) *> (
+      try (Treble <$ string "treble")
+  <|> try (Bass <$ string "bass")
+  <|> try (Soprano <$ string "soprano")
+  <|> try (Alto <$ string "alto")
+  <|> (Tenor <$ string "tenor"))
 
 parseKey :: Parsec String () LilyKey
 parseKey = (Major <$> ((string "\\key" *> sorc) *> (toLilyNoteName <$> parseNoteName) <* (string "\\major")))
@@ -680,8 +683,8 @@ parseTopLevel =     try (Score <$> parseScore)
         <?> "top-level expression"
 
 -- a file is a list of top-level expressions
-parseFile :: Parsec String () LilyFile
-parseFile = many $ sorc *> parseTopLevel <* sorc
+parseLily :: Parsec String () LilyFile
+parseLily = many $ sorc *> parseTopLevel <* sorc
 
 spacesOrComments = skipMany $ comment <|> space'
                    where space' = (satisfy isSpace) >> return ()

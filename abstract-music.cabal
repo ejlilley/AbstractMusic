@@ -10,7 +10,7 @@ name:                abstract-music
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.1.0.0
+version:             0.2.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            Manipulate music algebraically, and experiment with tuning systems
@@ -47,11 +47,11 @@ cabal-version:       >=1.8
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Tuning, Canon, Output, Shortcuts, Mensuration, Examples, Music, Scales, Csound, Lilypond, Costeley, Lassus, CsoundExp
+  exposed-modules:     Tuning, Output, Shortcuts, Music, Scales, LilyParse, LilyConvert
   
   -- Modules included in this library but not exported.
-  other-modules:       Util
+  other-modules:       Util, CsoundExp, Algebra, Examples
   
   -- Other library packages from which modules are imported.
-  build-depends:       base ==4.6.*, QuickCheck ==2.6.*, vector-space ==0.8.*, semigroups ==0.9.*, HCodecs ==0.2.*, containers ==0.5.*, process ==1.1.*, lilypond ==1.0.*, prettify ==1.0.*, unix ==2.6.*
+  build-depends:       base ==4.6.*, QuickCheck ==2.6.*, vector-space ==0.8.*, semigroups ==0.9.*, HCodecs ==0.2.*, containers ==0.5.*, process ==1.1.*, unix ==2.6.*, csound-catalog ==0.5.*
   

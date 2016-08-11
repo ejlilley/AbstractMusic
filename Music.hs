@@ -1093,6 +1093,7 @@ instance (Note p i d) => Semigroup (AbstractPhrase (AbstractNote p i d)) where
   (AbstractPhrase a) <> (AbstractPhrase b) = AbstractPhrase $ a ++ b
 
   
+emptyPhrase :: (Note p i d) => AbstractPhrase (AbstractNote p i d)
 emptyPhrase = AbstractPhrase []
 
 repeatPhrase 0 _ = error "no empty phrases!" -- hmmmm
