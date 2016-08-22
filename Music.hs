@@ -61,14 +61,15 @@ data AbstractInt1 = AbstractInt1 Skip Ficta deriving (Eq, Show) -- "intervals" b
 data AbstractInt2 = AbstractInt2 Quality Number -- intervals between ordinary pitches
 data AbstractInt3 = AbstractInt3 FreqRat deriving Eq -- ratios between frequencis
 
-data AbstractDur1 = AbstractDur1 MDur deriving (Eq, Show) -- prolations
+data AbstractDur1 = AbstractDur1 MDur deriving (Eq, Show, Ord) -- prolations
 data AbstractDur2 = AbstractDur2 (Ratio Int) deriving (Eq, Ord) -- note durations
 data AbstractDur3 = AbstractDur3 Length deriving (Eq, Ord) -- actual duration in milliseconds
 
 data Name = A | B | C | D | E | F | G | Up Name | Down Name deriving (Eq)
 data Accidental = Na | Fl Accidental | Sh Accidental deriving Eq
 
-data Degree = TO | ST | ME | SD | DO | SM | LN | DUp Degree | DDown Degree deriving (Eq, Show)
+-- data Degree = Ut | Re | Mi | Fa | Sol | La | LN | DUp Degree | DDown Degree deriving (Eq, Show)
+data Degree = Ut | Re | Mi | Fa | Sol | La | Si deriving (Eq, Show)
 data Ficta = Raise | Neutral | Lower deriving Eq
 -- todo: something more convenient than this, e.g. R | N | L for ficta and U | D for octaves
 
@@ -76,9 +77,9 @@ type FreqRat = Double -- ratio of frequencies
 type Freq = Double -- frequency in Hz
 type Length = Double
 
-data MDur = Mx | Lo | Br | Sb | Mi | Sm | Ff | Sf | MTie MDur MDur | Punctus MDur
+-- see also https://en.wikipedia.org/wiki/Rhythmic_mode
+data MDur = Mx | Ln | Br | Sb | Mn | Sm | Ff | Sf | MTie MDur MDur | Punctus MDur
           deriving (Eq, Show)
-
 
 data Skip = Fir | Sec | Thi | Fou | Fif | Six | Sev
           | Com Skip
@@ -93,30 +94,28 @@ data Number = Unison | Second | Third | Fourth | Fifth | Sixth | Seventh
 data Quality = Perf | Maj | Min | Aug Quality | Dim Quality deriving Eq
 
 
-data Metronome = Metronome Int
+data Metronome = Metronome Int deriving Eq
 
 
 -- A note can be one of:
--- AbstractPitch (an absolute pitch)
--- AbstractInt (a relative pitch)
--- Rest (just a duration, no sound)
--- Conn (a pointer to another phrase that starts simultaneously with the next note)
--- Directive (a convenient way of including arbitrary symbols in the printed (Lilypond) output)
+-- AbstractPitch (an absolute pitch)     \
+-- AbstractInt (a relative pitch)         | these have durations and pitches
+-- Rest (just a duration, no sound)      /
+-- Conn (a pointer to another phrase that starts simultaneously with the following 'real' note)  \  these have neither durations
+-- Dir (a convenient way of putting 'inaudible' symbols/other commands in the output)            /       nor pitches.
 
 data AbstractNote p i d where
   AbstractPitch :: (Note p i d, Show p, Show d) => p -> d -> (AbstractNote p i d)
   AbstractInt :: (Note p i d, Show i, Show d) => i -> d -> (AbstractNote p i d)
   Rest :: (Duration d, Show d) => d -> (AbstractNote p i d)
   Conn :: (Show p, Show i, Show d, Note p i d) => AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
---  ConnInt :: (Show p, Show i, Show d, Note p i d) => i -> AbstractPhrase (AbstractNote p i d) -> (AbstractNote p i d)
---   Directive :: L.Music -> AbstractNote p i d
-  Directive :: Bool -> AbstractNote p i d -- dummy
+  Dir :: (Note p i d) => (Directive p i d) -> AbstractNote p i d
 
 deriving instance Eq (AbstractNote p i d)
 
 
 coerceNote :: (Note p i d, Note p' i' d') => AbstractNote p i d -> AbstractNote p' i' d'
-coerceNote (Directive d) = Directive d
+-- coerceNote (Dir d) = Dir d
 coerceNote n = error $ "Don't know how to coerce " ++ (show n)
 
 isConn (Conn _) = True
@@ -127,6 +126,16 @@ isNote (AbstractInt _ _) = True
 isNote (Rest _) = True
 isNote _ = False
 
+
+data Directive p i d where
+  -- Tempo :: (Note p i d, Timing t d) => t -> Directive p i d -- hmmm
+  Tempo :: (Note p i d) => Metronome -> Directive p i d
+  -- Retune :: (Note p i d, Tuning t p i) => t -> Directive p i d -- hmmm
+  Figuring :: (Note p i d) => [i] -> Directive p i d
+
+deriving instance Eq (Directive p i d)
+
+deriving instance Show (Directive p i d)
 
 -- Note: we *could* make Conn look like this:
 --     Conn :: (Note p i d, Note p' i' d') => AbstractPhrase (AbstractNote p' i' d') -> (AbstractNote p i d)
@@ -163,7 +172,7 @@ instance Eq (Music n) where
 
 voiceList :: (Note p i d, n ~ AbstractNote p i d) => Music n -> [AbstractPhrase n]
 voiceList (Voices v) = v
-
+voiceList (Start m) = voiceList $ explodeVoices (Start m)
 
 -------- Type instances of the above types for Ord, Eq, Show etc.
 
@@ -184,6 +193,9 @@ instance Ord AbstractInt3 where
 
 instance Ord AbstractPitch3 where
   compare = compare `under` (\(AbstractPitch3 f) -> f)
+
+instance Ord MDur where
+  compare _ _ = error "Not implemented yet"
 
 instance Show AbstractPitch1 where
   show (AbstractPitch1 d f) = (show d) ++ (show f)
@@ -315,11 +327,11 @@ class (Transpose p i) => Scale s p i | s -> p i where
   scale :: s -> [AbstractPitch2]
   applyScale :: s -> p -> AbstractPitch2
 
-class (Semigroup d, Show d, Eq d) => Duration d where
-  unit :: d
-  zeroD :: d -- unfortunately this is necessary
+class (Semigroup d, Show d, Eq d, Ord d) => Duration d where
+  unit :: d           -- The 'base' duration that time signatures refer to
   combine :: d -> d -> d
-  subD :: d -> d -> d -- not always possible
+  zeroD :: d          -- Optional, obviously if it exists it should be the identity for combine
+  subD :: d -> d -> d -- Optional, obviously subD d d = zeroD
   tie :: d -> d -> d
   tie = combine
   showDur :: d -> String
@@ -355,7 +367,7 @@ class (Transpose p i) => Tuning t p i | t -> p i where
 -- Any way of specifying a concrete realisation of tempo -- some magic
 -- involving the IO monad may allow for accelerations etc.
 
-class (Duration d) => Timing t d | t -> d where
+class (Duration d, Eq d, Eq t) => Timing t d | t -> d where
   time :: t -> d -> AbstractDur3
   timeNote :: Note p i d => t -> AbstractNote p i d -> AbstractNote p i AbstractDur3
   timeNote t (AbstractPitch p d) = AbstractPitch p (time t d)
@@ -392,26 +404,26 @@ instance Enum Name where
 
 
 instance Enum Degree where
-  fromEnum TO = 0
-  fromEnum ST = 1
-  fromEnum ME = 2
-  fromEnum SD = 3
-  fromEnum DO = 4
-  fromEnum SM = 5
-  fromEnum LN = 6
-  fromEnum (DUp d) = (fromEnum d) + 7
-  fromEnum (DDown d) = (fromEnum d) - 7
+  fromEnum Ut  = 0
+  fromEnum Re  = 1
+  fromEnum Mi  = 2
+  fromEnum Fa  = 3
+  fromEnum Sol = 4
+  fromEnum La  = 5
+  fromEnum Si  = 6
+--   fromEnum (DUp d) = (fromEnum d) + 7
+--   fromEnum (DDown d) = (fromEnum d) - 7
 
-  toEnum 0 = TO
-  toEnum 1 = ST
-  toEnum 2 = ME
-  toEnum 3 = SD
-  toEnum 4 = DO
-  toEnum 5 = SM
-  toEnum 6 = LN
-  toEnum n
-    | (n < 0) = DDown (toEnum (n + 7))
-    | otherwise = DUp (toEnum (n - 7))
+  toEnum 0 = Ut 
+  toEnum 1 = Re 
+  toEnum 2 = Mi 
+  toEnum 3 = Fa 
+  toEnum 4 = Sol
+  toEnum 5 = La 
+  toEnum 6 = Si 
+--   toEnum n
+--     | (n < 0) = DDown (toEnum (n + 7))
+--     | otherwise = DUp (toEnum (n - 7))
 
 
 instance Enum Skip where
@@ -422,13 +434,13 @@ instance Enum Skip where
   fromEnum Fif = 4
   fromEnum Six = 5
   fromEnum Sev = 6
-  fromEnum (Com s) = 7 + (fromEnum s)
-  fromEnum (Neg s) = -1 * (fromEnum s)
+--   fromEnum (Com s) = 7 + (fromEnum s)
+--   fromEnum (Neg s) = -1 * (fromEnum s)
 
   toEnum n
-    | (n < 0) = Neg (toEnum (-1 * n))
-    | (n == 7) = Com Fir
-    | (n > 7) = Com (toEnum (n - 7))
+--     | (n < 0) = Neg (toEnum (-1 * n))
+--     | (n == 7) = Com Fir
+--     | (n > 7) = Com (toEnum (n - 7))
     | otherwise = toEnum' n
           where toEnum' 0 = Fir
                 toEnum' 1 = Sec
@@ -480,7 +492,7 @@ instance Show (AbstractNote p i d) where
   show (Rest d) = "Rest{" ++ (showRest d) ++ "}"
   show (Conn c) = "Conn{" ++ (show c) ++ "}"
 --  show (ConnInt i c) = "{" ++ (show i) ++ "|" ++ (show c) ++ "}"
-  show (Directive c) = "{" ++ (show c) ++ "}"
+  show (Dir c) = "{" ++ (show c) ++ "}"
 
 -- deriving instance Show (AbstractNote p i d)
 
@@ -490,7 +502,7 @@ instance Show (AbstractNote p i d) where
   -- show (Rest d) = "{" ++ (showRest d) ++ "}"
   -- show (Conn c) = "{" ++ (show c) ++ "}"
 -- --  show (ConnInt i c) = "{" ++ (show i) ++ "|" ++ (show c) ++ "}"
-  -- show (Directive c) = "{" ++ (show c) ++ "}"
+  -- show (Dir c) = "{" ++ (show c) ++ "}"
 
 ------------------------------------
 -- Instances of classes defined above.
@@ -513,7 +525,7 @@ instance Pitch AbstractPitch1 where
   flatten (AbstractPitch1 d f) = AbstractPitch1 d (addFicta Lower f)
   incr (AbstractPitch1 d f) = AbstractPitch1 (succ d) Neutral
   decr (AbstractPitch1 d f) = AbstractPitch1 (pred d) Neutral
-  middle = AbstractPitch1 TO Neutral
+  middle = AbstractPitch1 Ut Neutral
 
 instance Pitch AbstractPitch2 where
   sharpen (AbstractPitch2 n a) = toPitch $ (faPitch n a) + (1 ::+ 0)
@@ -938,7 +950,7 @@ foldPhrase1 f (AbstractPhrase (n:[])) =
 
 foldPhrase1 f (AbstractPhrase (n:ns)) =
   case n of (Conn p) -> f (foldPhrase1 f p) (foldPhrase1 f (AbstractPhrase ns))
-            (Directive _) -> foldPhrase1 f (AbstractPhrase ns)
+            (Dir _) -> foldPhrase1 f (AbstractPhrase ns)
             p -> f p (foldPhrase1 f (AbstractPhrase ns))
 
 foldPhrase1 _ _ = error "Exhausted patterns in foldPhrase1"
@@ -955,7 +967,7 @@ foldPhrase f e (AbstractPhrase (n:ns)) =
   case n of (Conn p) -> let branch1 = foldPhrase f e (AbstractPhrase ns)
                             branch2 = foldPhrase f branch1 p
                         in branch2
-            (Directive _) -> foldPhrase f e (AbstractPhrase ns)
+            (Dir _) -> foldPhrase f e (AbstractPhrase ns)
             p -> f p (foldPhrase f e (AbstractPhrase ns))
 
 
@@ -964,6 +976,7 @@ flattenPhrase p@(AbstractPhrase (_:[])) = p
 flattenPhrase (AbstractPhrase (n:ns)) =
   case n of (Conn p) -> p <> (flattenPhrase (AbstractPhrase ns))
             q -> (AbstractPhrase [q]) <> (flattenPhrase (AbstractPhrase ns))
+flattenPhrase (AbstractPhrase []) = AbstractPhrase []
 
 -- foldPhrase1 with *no* recursion into connected phrases -- they're simply ignored.
 foldPhraseSingle :: Note p i d
@@ -976,12 +989,12 @@ foldPhraseSingle f (AbstractPhrase p) = foldPhrase' f (AbstractPhrase (filter (n
                  -> AbstractPhrase (AbstractNote p i d) -> AbstractNote p i d
 
   foldPhrase' f (AbstractPhrase (n:(Conn _):[])) = n
-  foldPhrase' f (AbstractPhrase (n:(Directive _):[])) = n
+  foldPhrase' f (AbstractPhrase (n:(Dir _):[])) = n
   foldPhrase' f (AbstractPhrase (n:[])) = n
   foldPhrase' f (AbstractPhrase ((Conn _):ns)) = foldPhrase' f (AbstractPhrase ns)
-  foldPhrase' f (AbstractPhrase ((Directive _):ns)) = foldPhrase' f (AbstractPhrase ns)
+  foldPhrase' f (AbstractPhrase ((Dir _):ns)) = foldPhrase' f (AbstractPhrase ns)
   foldPhrase' f (AbstractPhrase (n:(Conn _):ns)) = f n (foldPhrase' f (AbstractPhrase ns))
-  foldPhrase' f (AbstractPhrase (n:(Directive _):ns)) = f n (foldPhrase' f (AbstractPhrase ns))
+  foldPhrase' f (AbstractPhrase (n:(Dir _):ns)) = f n (foldPhrase' f (AbstractPhrase ns))
   foldPhrase' f (AbstractPhrase (n:ns)) = f n (foldPhrase' f (AbstractPhrase ns))
   foldPhrase' _ p = error ("Exhausted patterns in foldPhraseSingle: " ++ (show p))
 
@@ -989,7 +1002,8 @@ foldPhraseSingle f (AbstractPhrase p) = foldPhrase' f (AbstractPhrase (filter (n
 extractDur (AbstractPitch _ d) = d
 extractDur (AbstractInt _ d) = d
 extractDur (Rest d) = d
-extractDur p = error ("Trying to extract duration from value with no duration: " ++ (show p))
+extractDur _ = zeroD
+-- extractDur p = error ("Trying to extract duration from value with no duration: " ++ (show p))
 
 -- extractPitch :: (Note p i d) => (AbstractNote p i d) -> p
 extractPitch (AbstractPitch p _) = p
@@ -1031,18 +1045,26 @@ splitVoices (AbstractPhrase ns) =
 
 
 
+firstPitch :: [AbstractNote p i d] -> Maybe (AbstractNote p i d)
+firstPitch ((AbstractPitch p d):ns) = Just $ AbstractPitch p d
+firstPitch ((AbstractInt _ _):ns) = Nothing -- error "Cannot make phrase absolute if it has relative pitches before absolute pitches."
+firstPitch [] = Nothing
+firstPitch (_:ns) = firstPitch ns
+
+
 -- todo: rewrite absolute in a foldPhrase/countDurs style.
 absolute :: (Note p i d) =>
             AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
 absolute (AbstractPhrase ns) = AbstractPhrase (absolute' n ns)
-  where firstPitch ((AbstractPitch p d):ns) = AbstractPitch p d
-        firstPitch ((AbstractInt _ _):ns) = error "Cannot make phrase absolute if it has relative pitches before absolute pitches."
-        firstPitch (_:ns) = firstPitch ns
-        n = firstPitch ns
+  where n = case firstPitch ns of
+             Just n' -> n'
+             Nothing -> error "arrrgh"
         absolute' _ ((AbstractPitch p d):notes) = (AbstractPitch p d) : (absolute' (AbstractPitch p d) notes)
         absolute' base@(AbstractPitch p _) ((AbstractInt i d):notes) = (AbstractPitch (transpose i p) d) : (absolute' (AbstractPitch (transpose i p) d) notes)
         absolute' base ((Conn (AbstractPhrase p)):notes) = let remaining = absolute' base notes
-                                                               base' = firstPitch remaining
+                                                               base' = case firstPitch remaining of
+                                                                        Just n' -> n'
+                                                                        Nothing -> error "arrrgh"
                                                                connected = (Conn (AbstractPhrase (absolute' base' p)))
                                                            in connected : remaining
         absolute' base (p:notes) = p : (absolute' base notes)
@@ -1113,7 +1135,7 @@ revVoices m = m
 ----noteToSound :: (Note p i d, Tuning t p i, Timing t' d) => t -> t' -> AbstractNote p i d -> Note3
 ----noteToSound tuning timing (AbstractPitch p d) = AbstractPitch (tune tuning p) (time timing d)
 ----noteToSound _ timing (Rest d) = Rest (time timing d)
-----noteToSound _ timing (Directive d) = (Directive d)
+----noteToSound _ timing (Dir d) = (Dir d)
 noteToSound :: (Note p i d, Tuning t p i, Timing t' d) => t -> t' -> AbstractNote p i d -> Note3
 noteToSound tu ti = (timeNote ti) . (tuneNote tu)
 

@@ -42,6 +42,9 @@ module Tuning (Tuning(..),
                synTune,
                pythagorean,
                qcmeantone,
+               scmeantone,
+               tcmeantone,
+               inverted,
                DummyTuning(..)) where
 
 import Prelude hiding (negate)

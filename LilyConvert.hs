@@ -20,7 +20,8 @@ import Text.Parsec.Language (haskell) -- use Haskell-style floats etc. for now
 
 import Music (AbstractNote(..),Note2(..), Name(..), Accidental(..),
               AbstractPitch2(..), AbstractDur2(..), AbstractInt2(..), AbstractPhrase(..),
-              Note(..), Music(..), Pitch(..), Interval(..), explodeVoices, apRest, apDur,
+              Note(..), Music(..), Pitch(..), Interval(..),
+              explodeVoices, apRest, apDur, apTran,
               chord, countDurs, countDursRec, emptyPhrase, mapPhrase
              )
 import Shortcuts
@@ -80,6 +81,10 @@ lilyOctave (LilyNote n (LilyOctave o) _ _) = if isAorB n
                                                   else o - 2
 lilyOctave (LilyNote n (LilyOctaveCheck o) d e) = lilyOctave (LilyNote n (LilyOctave o) d e)
 
+lilyOctave' :: (LilyNoteName, LilyOctave) -> Int
+lilyOctave' (n, LilyOctave o) = if isAorB n then o - 1 else o - 2
+lilyOctave' (n, LilyOctaveCheck o) = lilyOctave' (n, LilyOctave o)
+
 -- try: lilyNote $ LilyNote L_A (LilyOctave 2) (1 % 4) []
 lilyNote :: LilyNote -> Note2
 lilyNote p@(LilyNote n o d e) = let (n', a) = lilyNoteName n
@@ -92,6 +97,12 @@ lilyNote (LilySkip d) = rest (lilyDur d)
 
 lilySeq :: [LilyExpr] -> AbstractPhrase Note2
 lilySeq s = foldl (<>) emptyPhrase $ map lilyExpr s
+
+lilyPitch :: (LilyNoteName, LilyOctave) -> AbstractPitch2
+lilyPitch (n, o) = let (n', a) = lilyNoteName n
+                       pitch = AbstractPitch2 n' a
+                       octaves = _P8 ^* (lilyOctave' (n,o))
+                   in pitch .+^ octaves
 
 justPitch (AbstractPitch p d) = p
 
@@ -132,6 +143,11 @@ lilyExpr (Voice (LilyVoice _ _ e)) = lilyExpr e
 lilyExpr (Staff (LilyStaff _ _ e)) = lilyExpr e
 lilyExpr (Tie _) = emptyPhrase
 lilyExpr (Tup (LilyTuplet r e)) = mapPhrase (apDur (\(AbstractDur2 d) -> AbstractDur2 (d*r))) $ lilyExpr e
+lilyExpr (Trans (LilyTranspose (n,o) (n',o') e)) = let p = lilyPitch (n,o)
+                                                       p' = lilyPitch (n',o')
+                                                       i = p' .-. p
+                                                   in mapPhrase (apTran i) $ lilyExpr e
+lilyExpr _ = error "Cannot handle conversion of this kind of Lilypond expression!"
 
 -- filter out types of Expr that we can't cope with
 
@@ -142,6 +158,8 @@ filterOut (Voice (LilyVoice a b e)) = Voice $ LilyVoice a b (filterOut e)
 filterOut (Staff (LilyStaff a b e)) = Staff $ LilyStaff a b (filterOut e)
 filterOut (Rel (LilyRelative a e)) = Rel $ LilyRelative a (filterOut e)
 filterOut (Fix (LilyFixed a e)) = Fix $ LilyFixed a (filterOut e)
+filterOut (Trans (LilyTranspose a b e)) = Trans $ LilyTranspose a b (filterOut e)
+filterOut (Lyrics (LilyLyrics a e)) = Lyrics $ LilyLyrics a (filterOut e)
 filterOut e = e
 
 
@@ -149,6 +167,7 @@ filterOut e = e
 filterOutList :: [LilyExpr] -> [LilyExpr]
 filterOutList [] = []
 -- filterOutList ((Tie _):es) = filterOutList es
+filterOutList ((SlurExpr _):es) = filterOutList es
 filterOutList ((Bar _):es) = filterOutList es
 filterOutList ((Time _):es) = filterOutList es
 filterOutList ((Key _):es) = filterOutList es
@@ -160,6 +179,8 @@ filterOutList ((Change _):es) = filterOutList es
 -- filterOutList ((Fix _):es) = filterOutList es
 filterOutList ((Lit _):es) = filterOutList es
 filterOutList ((Assign _):es) = filterOutList es
+filterOutList ((Lyrics _):es) = filterOutList es
+filterOutList ((LyricMode _):es) = filterOutList es
 filterOutList (LayoutExpr:es) = filterOutList es
 filterOutList (MidiExpr:es) = filterOutList es
 filterOutList (e:es) = (filterOut e) : (filterOutList es)

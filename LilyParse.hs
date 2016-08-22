@@ -11,6 +11,7 @@ module LilyParse (LilyFile, LilyTopLevel(..), LilyRelative(..), LilyNoteName(..)
                   LilyChange(..), LilyContext(..), LilyExpr(..), LilyExpressive(..),
                   LilyArticulation(..), LilySlur(..), LilyLiteral(..), LilyAssignment(..),
                   LilyIdentifier(..), LilyNoteDuration, LilyFixed(..), LilyGrace(..),
+                  LilyLyrics(..), LilyTranspose(..),
                   parseNoteName, parseNoteDurs, parseOctave, parseNote,
                   parseNotes, parseSeq, parseSim, parseChord,
                   parseBar, parseTie, parseContext, parseAssign,
@@ -60,7 +61,7 @@ instance Show LilyFile where
   show f = showList' "\n" f
 
 -- Top level expressions in a Lilypond file:
-data LilyTopLevel = Header
+data LilyTopLevel = Header [LilyAssignment]
                   | Score LilyExpr
                   | Paper
                   | Midi
@@ -82,6 +83,15 @@ instance Show LilyRelative where
   show (LilyRelative (Just (n,o)) a) = "\\relative " ++ (show n) ++ (show o) ++ " " ++ (show a)
 
 data LilyFixed = LilyFixed (Maybe (LilyNoteName, LilyOctave)) LilyExpr
+
+instance Show LilyFixed where
+  show (LilyFixed Nothing a) = "\\fixed " ++ (show a)
+  show (LilyFixed (Just (n,o)) a) = "\\fixed " ++ (show n) ++ (show o) ++ " " ++ (show a)
+
+data LilyTranspose = LilyTranspose (LilyNoteName, LilyOctave) (LilyNoteName, LilyOctave) LilyExpr
+
+instance Show LilyTranspose where
+  show (LilyTranspose (n,o) (n',o') e) = "\\transpose " ++ (show n) ++ (show o) ++ " " ++ (show n') ++ (show o') ++ " " ++ (show e)
 
 data LilyNoteName = L_A | L_B | L_C | L_D | L_E | L_F | L_G
                   | L_AIS | L_BIS | L_CIS | L_DIS | L_EIS | L_FIS | L_GIS
@@ -128,10 +138,10 @@ data LilyKey = Major LilyNoteName
              | Minor LilyNoteName
 
 instance Show LilyKey where
-  show (Major n) = "\\clef " ++ (show n) ++ " \\major"
-  show (Minor n) = "\\clef " ++ (show n) ++ " \\minor"
+  show (Major n) = "\\key " ++ (show n) ++ " \\major"
+  show (Minor n) = "\\key " ++ (show n) ++ " \\minor"
 
-data LilyClef = Treble | Bass | Soprano | Alto | Tenor -- etc.
+data LilyClef = Treble | Bass | Soprano | Alto | Tenor | ArbitraryClef String
 
 instance Show LilyClef where
   show Treble = "\\clef treble"
@@ -139,6 +149,7 @@ instance Show LilyClef where
   show Soprano = "\\clef soprano"
   show Alto = "\\clef alto"
   show Tenor = "\\clef tenor"
+  show (ArbitraryClef s) = "\\clef \"" ++ s ++ "\""
 
 type LilyTime = (Int, LilyNoteDuration) -- i.e. "3/4" = "3 crotchets" etc.
 
@@ -221,6 +232,11 @@ instance Show LilyStaff where
   show (LilyStaff (Just s) Nothing e) = "\\new Staff = \"" ++ s ++ "\" " ++ (show e)
   show (LilyStaff Nothing Nothing e) = "\\new Staff = " ++ (show e)
 
+data LilyLyrics = LilyLyrics String LilyExpr -- \new Lyrics \lyricsto "foo" { bar }
+
+instance Show LilyLyrics where
+  show (LilyLyrics s e) = "\\new Lyrics \\lyricsto \"" ++ s ++ "\" " ++ (show e)
+
 data LilyChange = LilyChange String -- \change Staff = "foo"
 
 instance Show LilyChange where
@@ -244,12 +260,16 @@ data LilyExpr = Note LilyNote
               | Tup LilyTuplet
               | Staff LilyStaff
               | Voice LilyVoice
+              | Lyrics LilyLyrics
               | Change LilyChange
               | Rel LilyRelative
+              | Trans LilyTranspose
               | Fix LilyFixed
               | Lit LilyLiteral
               | Assign LilyAssignment
               | Grace LilyGrace
+              | LyricMode String
+              | SlurExpr LilySlur
               | LayoutExpr
               | MidiExpr
 
@@ -270,8 +290,12 @@ instance Show LilyExpr where
   show (Change s) = show s
   show (Assign s) = show s
   show (Rel s) = show s
+  show (Trans s) = show s
   show (Grace s) = show s
   show (Tup s) = show s
+  show (Lyrics s) = show s
+  show (LyricMode s) = "\\lyricmode {" ++ (show s) ++ "}"
+  show (SlurExpr s) = show s
   show LayoutExpr = "\\layout { }"
   show MidiExpr = "\\midi { }"
 
@@ -341,10 +365,10 @@ instance Show LilyLiteral where
   show (LilySymbol d) = "#\'" ++ d
   show (LilySexp d) = "#(" ++ d ++ ")"
 
-data LilyAssignment = LilyAssignment String LilyExpr -- foo = {a b c}
+data LilyAssignment = LilyAssignment String LilyExpr -- \set foo = {a b c}
                     | LilySymbAssignment String LilyLiteral LilyExpr -- foo #'bar = baz
-                    | LilyOverride LilyAssignment -- \override foo = bar
-                    | LilyOnce LilyAssignment -- \override foo = bar
+                    | LilyOverride LilyAssignment -- \override ...
+                    | LilyOnce LilyAssignment -- \once ...
 
 type LilyDict = [LilyAssignment]
 
@@ -488,6 +512,7 @@ parseNote :: Parsec String () LilyNote
 parseNote = (LilyRest <$> (char 'r' *> (parseNoteDurs <|> return (-1))))
             <|> (LilyFullRest <$> (char 'R' *> (parseNoteDurs <|> return (-1))))
             <|> (LilySkip <$> (char 's' *> (parseNoteDurs <|> return (-1))))
+            <|> (LilySkip <$> (string "\\skip" *> sorc *> (parseNoteDurs <|> return (-1))))
             <|> (LilyNote <$> (toLilyNoteName <$> parseNoteName)
                  <*> ((optional (char '!')) *> parseOctave <* (optional (char '!')))
                  <*> (parseNoteDurs <|> return (-1))
@@ -495,7 +520,16 @@ parseNote = (LilyRest <$> (char 'r' *> (parseNoteDurs <|> return (-1))))
 
 parseNoteMult = (flip replicate) <$> parseNote <*> (char '*' *> parseLitInt)
 
-parseNotes = collapse <$> (many (sorc *> (try parseNoteMult <|> (singlet <$> parseNote)) <* sorc))
+multNoteDur (LilyNote n o d e) r = LilyNote n o (d*r) e
+multNoteDur (LilyRest d) r = LilyRest (d*r)
+multNoteDur (LilyFullRest d) r = LilyFullRest (d*r)
+multNoteDur (LilySkip d) r = LilySkip (d*r)
+
+parseNoteFrac = multNoteDur <$> parseNote <*> ((%) <$> (char '*' *> parseLitInt) <*> (char '/' *> parseLitInt))
+
+parseNotes = collapse <$> (many (sorc *> (    (try (singlet <$> parseNoteFrac))
+                                          <|> (try parseNoteMult)
+                                          <|> (singlet <$> parseNote)) <* sorc))
 
 -- parseNotes = many (spaces *> parseNote <* spaces)
 
@@ -524,10 +558,19 @@ parseContext = LilyContext <$> ((string "\\with") *> sorc *> (braces' (many pars
 -- parseAssign = (LilyOverride <$> (string "\\override" *> spaces *> (many $ oneOf validIdentifiers)) <*> (spaces *> (char '=') *> spaces *> parseExpr))
               -- <|> (LilyAssignment <$> (many $ oneOf validIdentifiers) <*> (spaces *> (char '=') *> spaces *> parseExpr))
 
+reservedVariables = ["incipitwidth", "htitle", "hcomposer", "title",
+                     "subtitle", "subsubtitle", "composer", "opus",
+                     "poet", "copyright"]
+
+parseReservedVariable = foldl1 (<|>) $ map try $ map string reservedVariables
+
 parseAssign =     try (LilyOverride <$> (string "\\override" *> sorc *> parseAssign))
               <|> try (LilyOnce <$> (string "\\once" *> sorc *> parseAssign))
               <|> try (LilySymbAssignment <$> (many $ oneOf validIdentifiers) <*> (sorc *> parseLiteral) <*> (sorc *> (char '=') *> sorc *> parseExpr))
-              <|> try (LilyAssignment <$> ((string "\\set") *> sorc *> (many $ oneOf validIdentifiers)) <*> ((Lit . LilyString) <$> (sorc *> (char '=') *> sorc *> parseLitString)))
+              <|> try (LilyAssignment <$> parseReservedVariable <*> ((Lit . LilyInt) <$> (sorc *> (char '=') *> sorc *> parseLitInt)))
+              <|> try (LilyAssignment <$> parseReservedVariable <*> ((Lit . LilyString) <$> (sorc *> (char '=') *> sorc *> parseLitString)))
+              -- <|> try (LilyAssignment <$> parseReservedVariable <*> ((Lit . LilyString) <$> (sorc *> (char '=') *> sorc *> parseMarkup)))
+              <|> try (LilyAssignment <$> ((string "\\set") *> sorc *> (many $ oneOf validIdentifiers)) <*> (Lit <$> (sorc *> (char '=') *> sorc *> parseLiteral)))
               <|> (LilyAssignment <$> (many $ oneOf validIdentifiers) <*> (sorc *> (char '=') *> sorc *> parseExpr))
 
 parens'  = between ((char '(') <* spaces) (spaces *> (char ')'))
@@ -538,10 +581,10 @@ parseLitInt = fromIntegral <$> (integer haskell)
 parseLitString = stringLiteral haskell
 parseLitSymbol = (char '\'') *> (many $ oneOf validIdentifiers)
 
-sexpChars = validIdentifiers ++ ['0'..'9'] ++ [' ', '-', '\'', '\"'] -- ???? TODO: fix
+sexpChars = validIdentifiers ++ ['0'..'9'] ++ [' ', '-', '\'', '\"', ':', '#'] -- ???? TODO: fix
 parseLitSexp = parens' (many $ oneOf sexpChars)
 
-parseLiteral = (char '#') *> ((LilyBool <$> parseLitBool)
+parseLiteral = (char '#') *> (    (LilyBool <$> parseLitBool)
                               <|> (LilyFloat <$> parseLitFloat)
                               <|> (LilyInt <$> parseLitInt)
                               <|> (LilyString <$> parseLitString)
@@ -582,10 +625,15 @@ parseArticulation = (char '-') *>     ((ArticHat <$ char '^')
                             -- <|> (BeamOn <$ char '[')
                             -- <|> (BeamOff <$ char ']'))
 
-parseSlur = ((SlurOn <$ char '(')
-             <|> (SlurOff <$ char ')')
-             <|> (BeamOn <$ char '[')
-             <|> (BeamOff <$ char ']'))
+parseSlur = (    try (SlurOn <$ string "\\(")
+             <|> try (SlurOff <$ string "\\)")
+             <|> try (BeamOn <$ string "\\[")
+             <|> try (BeamOff <$ string "\\]")
+             <|> try (SlurOn <$ char '(')
+             <|> try (SlurOff <$ char ')')
+             <|> try (BeamOn <$ char '[')
+             <|> (BeamOff <$ char ']')
+            )
 
 parseScore = (string "\\score" *> sorc) *> parseExpr
 
@@ -626,14 +674,27 @@ parseClef = (string "\\clef" *> sorc) *> (
   <|> try (Bass <$ string "bass")
   <|> try (Soprano <$ string "soprano")
   <|> try (Alto <$ string "alto")
-  <|> (Tenor <$ string "tenor"))
+  <|> try (Tenor <$ string "tenor")
+  <|> (ArbitraryClef <$> parseLitString)
+      )
 
 parseKey :: Parsec String () LilyKey
-parseKey = (Major <$> ((string "\\key" *> sorc) *> (toLilyNoteName <$> parseNoteName) <* (string "\\major")))
-           <|> Minor <$> ((string "\\key" *> sorc) *> (toLilyNoteName <$> parseNoteName) <* (string "\\minor"))
+parseKey = try (Major <$> ((string "\\key" *> sorc) *> (toLilyNoteName <$> parseNoteName) <* sorc <* (string "\\major")))
+           <|> Minor <$> ((string "\\key" *> sorc) *> (toLilyNoteName <$> parseNoteName) <* sorc <* (string "\\minor"))
 
 parseRelative = LilyRelative <$> (try (Just <$> ((,) <$> ((string "\\relative" *> sorc) *> (toLilyNoteName <$> parseNoteName)) <*> parseOctave))
                                   <|> (string "\\relative" *> sorc *> return Nothing)) <*> (sorc *> parseExpr)
+
+parseTranspose = LilyTranspose
+                 <$> ((,) <$> ((string "\\transpose" *> sorc) *> (toLilyNoteName <$> parseNoteName)) <*> parseOctave)
+                 <*> ((,) <$> (toLilyNoteName <$> (sorc *> parseNoteName)) <*> parseOctave)
+                 <*> (sorc *> parseExpr)
+
+lyricChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ [' ', '-', '_', ',', '.', '\\', '!', '?', '\n']
+
+parseLyricmode = string "\\lyricmode" *> sorc *> braces' (many $ oneOf lyricChars)
+
+parseLyrics = LilyLyrics <$> ((string "\\new") *> sorc *> (string "Lyrics") *> sorc *> (string "\\lyricsto") *> sorc *> parseLitString) <*> (sorc *> parseExpr)
 
 -- just one expression
 parseExpr :: Parsec String () LilyExpr
@@ -650,10 +711,14 @@ parseExpr =     try (Seq <$> parseSeq)
             <|> try (Staff <$> parseStaff)
             <|> try (Change <$> parseChange)
             <|> try (Rel <$> parseRelative)
+            <|> try (Trans <$> parseTranspose)
             <|> try (Grace <$> parseGrace)
+            <|> try (Lyrics <$> parseLyrics)
+            <|> try (LyricMode <$> parseLyricmode)
             <|> try (Tup <$> parseTuplet)
             <|> try (Assign <$> parseAssign)
             <|> try (Lit <$> parseLiteral)
+            <|> try (SlurExpr <$> parseSlur)
             <|> try (LayoutExpr <$ parseLayout)
             <|> try (MidiExpr <$ parseMidi)
             <|> (Ident <$> parseIdent) -- put this last, after all reserved backslash-commands
@@ -663,7 +728,9 @@ parseExpr =     try (Seq <$> parseSeq)
 
 -- parseExprs = many $ spaces *> parseExpr <* spaces
 
-parseExprs = try (collapse <$> (many $ sorc *> ((try $ (map Note) <$> parseNoteMult) <|> (singlet <$> parseExpr)) <* sorc))
+parseExprs = try (collapse <$> (many $ sorc *> (    try ((singlet . Note) <$> parseNoteFrac)
+                                                <|> try ((map Note) <$> parseNoteMult)
+                                                <|> (singlet <$> parseExpr)) <* sorc))
              <|> ([] <$ sorc)
 
 -- parseExprs' = many $ sorc *> ((try $ (map Note) <$> parseNoteMult) <|> (singlet <$> parseExpr)) <* sorc
@@ -675,6 +742,7 @@ parseExprsSlashes = (:) <$> (sorc *> parseExpr <* sorc <* (string "\\\\") <* sor
 -- a single top-level expression
 parseTopLevel :: Parsec String () LilyTopLevel
 parseTopLevel =     try (Score <$> parseScore)
+                <|> try (Header <$> parseHeader)
                 <|> try (Version <$> parseVersion)
                 <|> try (Scheme <$> parseLiteral)
                 <|> try (Layout <$ parseLayout)
@@ -690,6 +758,9 @@ spacesOrComments = skipMany $ comment <|> space'
                    where space' = (satisfy isSpace) >> return ()
                          comment = string "%" >> manyTill anyChar newline >> return ()
 sorc = spacesOrComments -- shorthand
+
+parseHeader :: Parsec String () [LilyAssignment]
+parseHeader = (string "\\header") *> sorc *> braces' (many parseAssign)
 
 instance Enum LilyNote where
   fromEnum (LilyNote L_G (LilyOctave 0) _ _) = 4
@@ -848,6 +919,7 @@ firstNote (Voice (LilyVoice _ _ e)) = firstNote e
 firstNote (Staff (LilyStaff _ _ e)) = firstNote e
 firstNote (Rel (LilyRelative _ e)) = firstNote e
 firstNote (Fix (LilyFixed _ e)) = firstNote e
+firstNote (Trans (LilyTranspose _ _ e)) = firstNote e
 -- firstNote _ = error "Couldn\'t find first note in expression"
 firstNote _ = Nothing
 
@@ -863,6 +935,8 @@ relativeExpr base (Voice (LilyVoice s c e)) = let (b, e') = relativeExpr base e
                                               in (b, Voice $ LilyVoice s c e')
 relativeExpr base (Staff (LilyStaff s c e)) = let (b, e') = relativeExpr base e
                                               in (b, Staff $ LilyStaff s c e')
+relativeExpr base (Trans (LilyTranspose n n' e)) = let (b, e') = relativeExpr base e
+                                                   in (b, Trans $ LilyTranspose n n' e')
 relativeExpr base (Rel (LilyRelative (Just (n, o)) e)) = let (b, e') = relativeExpr (LilyNote n o (1%4) []) e
                                                          in (base, e')
 relativeExpr base (Rel (LilyRelative Nothing e)) = let (b, e') = relativeExpr p e
@@ -870,6 +944,7 @@ relativeExpr base (Rel (LilyRelative Nothing e)) = let (b, e') = relativeExpr p 
                                                             (Just n) -> n
                                                             Nothing -> error "Couldn\'t find first note in expression"
                                                    in (base, e')
+relativeExpr base (Fix (LilyFixed _ e)) = (base, e) -- or not????
 relativeExpr base (Tup (LilyTuplet r e)) = let (b', e') = relativeExpr base e
                                            in (b', Tup (LilyTuplet r e'))
 relativeExpr base e = (base, e)
@@ -925,6 +1000,10 @@ setDurExpr base (Staff (LilyStaff s c e)) = let (b, e') = setDurExpr base e
                                             in (b, Staff $ LilyStaff s c e')
 setDurExpr base (Rel (LilyRelative r e)) = let (b, e') = setDurExpr base e
                                            in (b, Rel (LilyRelative r e'))
+setDurExpr base (Fix (LilyFixed r e)) = let (b, e') = setDurExpr base e
+                                        in (b, Fix (LilyFixed r e'))
+setDurExpr base (Trans (LilyTranspose n n' e)) = let (b, e') = setDurExpr base e
+                                                 in (b, Trans (LilyTranspose n n' e'))
 setDurExpr base (Tup (LilyTuplet r e)) = let (b', e') = setDurExpr base e
                                          in (b', Tup (LilyTuplet r e'))
 setDurExpr base e = (base, e)
@@ -940,6 +1019,7 @@ mapNotes f (Sim (LilySimultaneous s)) = Sim (LilySimultaneous (map (mapNotes f) 
 mapNotes f (Voice (LilyVoice s c e)) = Voice (LilyVoice s c (mapNotes f e))
 mapNotes f (Staff (LilyStaff s c e)) = Staff (LilyStaff s c (mapNotes f e))
 mapNotes f (Rel (LilyRelative n e)) = Rel (LilyRelative n (mapNotes f e))
+mapNotes f (Trans (LilyTranspose a b e)) = Trans (LilyTranspose a b (mapNotes f e))
 mapNotes f (Fix (LilyFixed n e)) = Fix (LilyFixed n (mapNotes f e))
 mapNotes f (Chord (LilyChord c d)) = Chord (LilyChord (map f c) d)
 mapNotes f (Tup (LilyTuplet r e)) = Tup (LilyTuplet r (mapNotes f e))
@@ -952,6 +1032,7 @@ mapIdents f (Sim (LilySimultaneous s)) = Sim (LilySimultaneous (map (mapIdents f
 mapIdents f (Voice (LilyVoice s c e)) = Voice (LilyVoice s c (mapIdents f e))
 mapIdents f (Staff (LilyStaff s c e)) = Staff (LilyStaff s c (mapIdents f e))
 mapIdents f (Rel (LilyRelative n e)) = Rel (LilyRelative n (mapIdents f e))
+mapIdents f (Trans (LilyTranspose a b e)) = Trans (LilyTranspose a b (mapIdents f e))
 mapIdents f (Fix (LilyFixed n e)) = Fix (LilyFixed n (mapIdents f e))
 mapIdents f (Tup (LilyTuplet r e)) = Tup (LilyTuplet r (mapIdents f e))
 mapIdents f e = e
@@ -962,6 +1043,7 @@ mapSeqs f (Sim (LilySimultaneous s)) = Sim (LilySimultaneous (map (mapSeqs f) s)
 mapSeqs f (Voice (LilyVoice s c e)) = Voice (LilyVoice s c (mapSeqs f e))
 mapSeqs f (Staff (LilyStaff s c e)) = Staff (LilyStaff s c (mapSeqs f e))
 mapSeqs f (Rel (LilyRelative n e)) = Rel (LilyRelative n (mapSeqs f e))
+mapSeqs f (Trans (LilyTranspose a b e)) = Trans (LilyTranspose a b (mapSeqs f e))
 mapSeqs f (Fix (LilyFixed n e)) = Fix (LilyFixed n (mapSeqs f e))
 mapSeqs f (Tup (LilyTuplet r e)) = Tup (LilyTuplet r (mapSeqs f e))
 mapSeqs f e = e

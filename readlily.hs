@@ -26,7 +26,7 @@ data Flag = File String
           deriving (Eq,Ord,Show)
 
 flags = [Option ['w'] ["write"]     (ReqArg File "file") "Write a .wav file (defaults to playing sounds in real-time)",
-         Option ['t'] ["tuning"]    (ReqArg Tuning "name") ("Use named tuning system t (defaults to equal temperament). \n\t\tAcceptable tuning systems are: " ++ tuningSystems),
+         Option ['t'] ["tuning"]    (ReqArg Tuning "name") ("Use named tuning system t (defaults to equal temperament). \n\t\tAcceptable tuning systems are: " ++ tuningSystems ++ "\n\t\t where \"tet\" is equal temperament and \"..mt\" is a meantone."),
          Option ['f'] ["freq"]      (ReqArg Freq "freq") "Use frequency f (in Hz) for treble A (defaults to 440)",
          Option ['m'] ["metronome"] (ReqArg Speed "speed") "Use metronome mark s (defaults to 240)",
          Option ['i'] ["instrument"] (ReqArg Instr "instr") ("Use this instrument (defaults to harpsichord). \n\t\tAcceptable instruments are: " ++ instruments),
@@ -47,11 +47,12 @@ parseArgs argv = case getOpt Permute flags argv of
 tuningSystems = 
   foldl (\a b -> a ++ ", " ++ b) "equal" $
   ["qcmt"      ,
-   "qcmeantone",
-   "pythagorean",
+   "scmt",
+   "tcmt",
    "pythag"    ,
    "septimal"  ,
    "kleismic"  ,
+   "inverted"  ,
    "tet5"      ,
    "tet7"      ,
    "tet12"     ,
@@ -62,8 +63,9 @@ tuningSystems =
 getTuning f ((Tuning t):as) = case t of
   "equal"       -> equal (a, f)
   "qcmt"        -> qcmeantone (a, f)
-  "qcmeantone"  -> qcmeantone (a, f)
-  "pythagorean" -> pythagorean (a, f)
+  "scmt"        -> scmeantone (a, f)
+  "tcmt"        -> tcmeantone (a, f)
+  "inverted"    -> inverted (a, f)
   "pythag"      -> pythagorean (a, f)
   "septimal"    -> septimal (a, f)
   "kleismic"    -> kleismic (a, f)
@@ -91,9 +93,8 @@ doParse fileName = parseFromFile parseLily fileName >>= either report return
                           exitFailure
 
 instruments =
-  foldl (\a b -> a ++ ", " ++ b) "equal" $
-  [ "harpsichord",
-    "piano"     ,
+  foldl (\a b -> a ++ ", " ++ b) "harpsichord" $
+  [ "piano"     ,
     "organ"     ,
     "choir"     ,
     "pad"       ,

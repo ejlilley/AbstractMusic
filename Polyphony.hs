@@ -8,7 +8,8 @@
              FlexibleInstances #-}
 
 
-module Polyphony (Cadence(..)) where
+-- module Polyphony (Cadence(..)) where
+module Polyphony where
 
 import Music (Note(..), AbstractInt2(..),
               AbstractDur2(..),
@@ -16,6 +17,7 @@ import Music (Note(..), AbstractInt2(..),
               Music(..), explodeVoices, absolute, Duration(..),
               mapMusic, mapPhrase, apTran, AbstractPhrase(..),
               extractPitch)
+
 import Shortcuts
 import Data.AffineSpace
 import Data.List

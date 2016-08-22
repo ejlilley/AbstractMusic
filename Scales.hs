@@ -196,5 +196,49 @@ chromaticScale p@(AbstractPitch2 n a)
 
 -- (measured in semitones)
 
+hexachord :: AbstractPitch2 -> [AbstractPitch2]
+hexachord p = [p, p .+^ _M2, p .+^ _M3, p .+^ _P4, p .+^ _P5, p .+^ _M6]
 
+-- Guidonian Hexachords:
 
+data HexachordPrima = HexachordPrima deriving Show
+instance Scale HexachordPrima AbstractPitch1 AbstractInt1 where
+  tonic HexachordPrima = g .-^ (3 *^ _P8)
+  scale s = hexachord (tonic s)
+  applyScale = scaleDegree
+
+data HexachordSecunda = HexachordSecunda deriving Show
+instance Scale HexachordSecunda AbstractPitch1 AbstractInt1 where
+  tonic s = c .-^ (2 *^ _P8)
+  scale s = hexachord (tonic s)
+  applyScale = scaleDegree
+
+data HexachordTertia = HexachordTertia deriving Show
+instance Scale HexachordTertia AbstractPitch1 AbstractInt1 where
+  tonic s = f .-^ (2 *^ _P8)
+  scale s = hexachord (tonic s)
+  applyScale = scaleDegree
+
+data HexachordQuarta = HexachordQuarta deriving Show
+instance Scale HexachordQuarta AbstractPitch1 AbstractInt1 where
+  tonic s = g .-^ (2 *^ _P8)
+  scale s = hexachord (tonic s)
+  applyScale = scaleDegree
+
+data HexachordQuinta = HexachordQuinta deriving Show
+instance Scale HexachordQuinta AbstractPitch1 AbstractInt1 where
+  tonic s = c .-^ _P8
+  scale s = hexachord (tonic s)
+  applyScale = scaleDegree
+
+data HexachordSexta = HexachordSexta deriving Show
+instance Scale HexachordSexta AbstractPitch1 AbstractInt1 where
+  tonic s = f .-^ _P8
+  scale s = hexachord (tonic s)
+  applyScale = scaleDegree
+
+data HexachordSeptima = HexachordSeptima deriving Show
+instance Scale HexachordSeptima AbstractPitch1 AbstractInt1 where
+  tonic s = g .-^ _P8
+  scale s = hexachord (tonic s)
+  applyScale = scaleDegree
