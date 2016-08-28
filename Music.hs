@@ -1165,5 +1165,23 @@ chord d (p:ps) = let r = chord d ps
                  in phrase [Conn r, note p d]
 
 
+-- remove duration from note
+dropDur :: (Note p i d) => d -> (AbstractNote p i d) -> (AbstractNote p i d)
+dropDur d n = let d' = extractDur n
+              in if d' < d
+                 then apDur (\_ -> zeroD) n
+                 else apDur (\_ -> subD d' d) n
 
+-- remove a certain duration of notes from beginning of phrase
+dropPhrase :: (Note p i d) => d -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
+dropPhrase d p@(AbstractPhrase (x:xs))
+  | d == zeroD = p
+  | d >= extractDur x = dropPhrase (subD d (extractDur x)) (AbstractPhrase xs)
+  | otherwise = AbstractPhrase ((dropDur d x):xs)
+dropPhrase _ (AbstractPhrase []) = AbstractPhrase []
 
+reversePhrase :: (Note p i d) => AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
+reversePhrase (AbstractPhrase p) = AbstractPhrase (reverse p)
+
+dropPhraseEnd :: (Note p i d) => d -> AbstractPhrase (AbstractNote p i d) -> AbstractPhrase (AbstractNote p i d)
+dropPhraseEnd d = reversePhrase . (dropPhrase d) . reversePhrase

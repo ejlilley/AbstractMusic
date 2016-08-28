@@ -584,11 +584,11 @@ parseLitSymbol = (char '\'') *> (many $ oneOf validIdentifiers)
 sexpChars = validIdentifiers ++ ['0'..'9'] ++ [' ', '-', '\'', '\"', ':', '#'] -- ???? TODO: fix
 parseLitSexp = parens' (many $ oneOf sexpChars)
 
-parseLiteral = (char '#') *> (    (LilyBool <$> parseLitBool)
-                              <|> (LilyFloat <$> parseLitFloat)
-                              <|> (LilyInt <$> parseLitInt)
-                              <|> (LilyString <$> parseLitString)
-                              <|> (LilySymbol <$> parseLitSymbol)
+parseLiteral = (char '#') *> (    try (LilyBool <$> parseLitBool)
+                              <|> try (LilyFloat <$> parseLitFloat)
+                              <|> try (LilyInt <$> parseLitInt)
+                              <|> try (LilyString <$> parseLitString)
+                              <|> try (LilySymbol <$> parseLitSymbol)
                               <|> (LilySexp <$> parseLitSexp))
 
 -- TODO: this doesn't parse "--" at the end of a string of expressions, fix
@@ -1069,15 +1069,37 @@ generateDict = (map unwrap . filter isAssignment)
         unwrap (Assignment a) = a
 
 
--- TODO: implement recursive variable expansion
-expandVariables :: LilyFile -> LilyFile
-expandVariables file = map expandVariable file
-  where dict = generateDict file
-        expandVariable (Score e) = Score (mapIdents (eval dict) e)
-        expandVariable x = x
+-- -- TODO: implement recursive variable expansion
+-- expandVariables :: LilyFile -> LilyFile
+-- expandVariables file = map expandVariable file
+  -- where dict = generateDict file
+        -- expandVariable (Score e) = Score (mapIdents (eval dict) e)
+        -- expandVariable x = x
 
 mapExprs :: (LilyExpr -> LilyExpr) -> LilyFile -> LilyFile
 mapExprs _ [] = []
 mapExprs f ((Score e):es) = (Score (f e)):(mapExprs f es)
 mapExprs f ((Assignment (LilyAssignment s e)):es) = (Assignment (LilyAssignment s (f e))):(mapExprs f es)
 mapExprs f (e:es) = e : (mapExprs f es)
+
+addToDict :: LilyDict -> LilyAssignment -> LilyDict
+addToDict d a = a:d
+
+
+-- expand variables 'recursively'
+expandVarsRec :: LilyDict -> LilyFile -> LilyFile
+expandVarsRec d ((Assignment a):xs) = let a' = expandVarsRecAss d a
+                                          d' = addToDict d a'
+                                      in (Assignment a'):(expandVarsRec d' xs)
+expandVarsRec d ((Score e):xs) = let e' = mapIdents (eval d) e
+                                 in (Score e'):(expandVarsRec d xs)
+expandVarsRec d (x:xs) = x:(expandVarsRec d xs)
+expandVarsRec _ [] = []
+
+expandVarsRecAss :: LilyDict -> LilyAssignment -> LilyAssignment
+expandVarsRecAss d (LilyAssignment s e) = LilyAssignment s (mapIdents (eval d) e)
+expandVarsRecAss d (LilySymbAssignment s l e) = LilySymbAssignment s l (mapIdents (eval d) e)
+expandVarsRecAss d (LilyOverride a) = LilyOverride (expandVarsRecAss d a)
+expandVarsRecAss d (LilyOnce a) = LilyOnce (expandVarsRecAss d a)
+
+expandVariables = expandVarsRec []

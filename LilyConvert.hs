@@ -4,7 +4,7 @@
              FlexibleInstances #-}
 
 
-module LilyConvert (getScore, lilyExpr) where
+module LilyConvert (getScore, lilyExpr, expandExpr) where
 
 import Prelude hiding (negate)
 
@@ -186,9 +186,12 @@ filterOutList (MidiExpr:es) = filterOutList es
 filterOutList (e:es) = (filterOut e) : (filterOutList es)
 
 getScore :: LilyFile -> Music Note2
-getScore ((Score e):xs) = Start $ lilyExpr (((mapSeqs collapseTies) . expandDur . expandRel . filterOut) e)
+getScore ((Score e):xs) = Start $ lilyExpr (expandExpr e)
 getScore (x:xs) = getScore xs
 getScore [] = error "No score found in file"
+
+expandExpr :: LilyExpr -> LilyExpr
+expandExpr = (mapSeqs collapseTies) . expandDur . expandRel . filterOut
 
 makeTies :: [LilyExpr] -> LilyExpr -> [LilyExpr] -> [LilyExpr]
 -- makeTies p e n | trace (show p ++ ", " ++ show e ++ ", " ++ show n) False = undefined

@@ -26,7 +26,9 @@ data Flag = File String
           deriving (Eq,Ord,Show)
 
 flags = [Option ['w'] ["write"]     (ReqArg File "file") "Write a .wav file (defaults to playing sounds in real-time)",
-         Option ['t'] ["tuning"]    (ReqArg Tuning "name") ("Use named tuning system t (defaults to equal temperament). \n\t\tAcceptable tuning systems are: " ++ tuningSystems ++ "\n\t\t where \"tet\" is equal temperament and \"..mt\" is a meantone."),
+         Option ['t'] ["tuning"]    (ReqArg Tuning "name") ("Use named tuning system t (defaults to equal temperament). \n\t\tAcceptable tuning systems are: "
+                                                            ++ tuningSystems
+                                                            ++ "\n\t\t where \"tet\" is equal temperament and \"..mt\" is a meantone."),
          Option ['f'] ["freq"]      (ReqArg Freq "freq") "Use frequency f (in Hz) for treble A (defaults to 440)",
          Option ['m'] ["metronome"] (ReqArg Speed "speed") "Use metronome mark s (defaults to 240)",
          Option ['i'] ["instrument"] (ReqArg Instr "instr") ("Use this instrument (defaults to harpsichord). \n\t\tAcceptable instruments are: " ++ instruments),
