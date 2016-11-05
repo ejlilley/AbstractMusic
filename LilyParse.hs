@@ -584,12 +584,21 @@ parseLitSymbol = (char '\'') *> (many $ oneOf validIdentifiers)
 sexpChars = validIdentifiers ++ ['0'..'9'] ++ [' ', '-', '\'', '\"', ':', '#'] -- ???? TODO: fix
 parseLitSexp = parens' (many $ oneOf sexpChars)
 
-parseLiteral = (char '#') *> (    try (LilyBool <$> parseLitBool)
-                              <|> try (LilyFloat <$> parseLitFloat)
-                              <|> try (LilyInt <$> parseLitInt)
-                              <|> try (LilyString <$> parseLitString)
-                              <|> try (LilySymbol <$> parseLitSymbol)
-                              <|> (LilySexp <$> parseLitSexp))
+-- parseLiteral = (char '#') *> (    try (LilyBool <$> parseLitBool)
+                              -- <|> try (LilyFloat <$> parseLitFloat)
+                              -- <|> try (LilyInt <$> parseLitInt)
+                              -- <|> try (LilyString <$> parseLitString)
+                              -- <|> try (LilySymbol <$> parseLitSymbol)
+                              -- <|> (LilySexp <$> parseLitSexp))
+
+parseLiteral = try (LilyBool <$> parseLitBool)
+               <|> try (LilyFloat <$> parseLitFloat)
+               <|> try (LilyInt <$> parseLitInt)
+               <|> try (LilyString <$> parseLitString)
+               <|> try (LilySymbol <$> parseLitSymbol)
+               <|> try (LilySexp <$> parseLitSexp)
+               <|> ((char '#') *> parseLiteral)
+
 
 -- TODO: this doesn't parse "--" at the end of a string of expressions, fix
 parseExpressive =     try (Super <$> parseSuperText)

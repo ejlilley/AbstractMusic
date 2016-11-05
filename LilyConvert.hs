@@ -195,18 +195,19 @@ expandExpr = (mapSeqs collapseTies) . expandDur . expandRel . filterOut
 
 makeTies :: [LilyExpr] -> LilyExpr -> [LilyExpr] -> [LilyExpr]
 -- makeTies p e n | trace (show p ++ ", " ++ show e ++ ", " ++ show n) False = undefined
--- makeTies [] e [] = [e]
+makeTies [] e [] = [e]
 makeTies p e [] = map (mapSeqs collapseTies) $ p ++ [e]
 makeTies [] e n = makeTies [e] (head n) (tail n)
 makeTies p e n = 
-  let result = (makeTie (last p) e (head n))
-  in if (length (tail n)) == 0
-     then map (mapSeqs collapseTies) $ (init p) ++ result -- some of the 'notes' might actually be more Seqs/Sims etc. so recurse into them
-     else case result of
-           [] -> makeTies (init p) (head (tail n)) (tail (tail n))
-           [e'] -> makeTies ((init p) ++ [e']) (head (tail n)) (tail (tail n))
-           [e1,e2] -> makeTies ((init p) ++ [e1, e2]) (head (tail n)) (tail (tail n))
-           [e1,e2,e3] -> makeTies ((init p) ++ [e1, e2]) e3 (tail n)
+  let result = makeTie (last p) e (head n)
+  in case (length n) of
+      0 -> []
+      1 -> map (mapSeqs collapseTies) $ (init p) ++ result -- some of the 'notes' might actually be more Seqs/Sims etc. so recurse into them
+      x -> case result of
+            [] -> makeTies (init p) (head (tail n)) (tail (tail n))
+            [e'] -> makeTies ((init p) ++ [e']) (head (tail n)) (tail (tail n))
+            [e1,e2] -> makeTies ((init p) ++ [e1, e2]) (head (tail n)) (tail (tail n))
+            [e1,e2,e3] -> makeTies ((init p) ++ [e1, e2]) e3 (tail n)
 
 -- makeTies p e n = let result = (makeTie (last p) e (head n)) ++ (tail n)
                  -- in if (length result) < 3
@@ -225,6 +226,7 @@ makeTie n1 n2 n3 = [n1, n2, n3]
   -- n2' = mapSeqs collapseTies n2
   -- n3' = mapSeqs collapseTies n3
 
+collapseTies (LilySequential []) = LilySequential []
 collapseTies (LilySequential s) = LilySequential $ makeTies [] (head s) (tail s)
 
 -- collapseTies (LilySequential s) = LilySequential $ collapseTies' s where
