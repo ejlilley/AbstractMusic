@@ -21,7 +21,7 @@
              ViewPatterns,
              FlexibleInstances #-}
 
-module Lilypond (lilypond, writeLilypond, lilypondFile, htmlFile) where
+module LilyPrint (lilypond, writeLilypond, lilypondFile, htmlFile) where
 
 import Music (AbstractNote(..),Note2(..), Name(..), Accidental(..),
               AbstractPitch2(..), AbstractDur2(..), AbstractInt2(..), AbstractPhrase(..),
